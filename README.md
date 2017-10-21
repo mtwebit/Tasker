@@ -20,7 +20,7 @@ Tasker will create a hidden Task page below $dictPage and save all this info int
 Tasker works using LazyCron or host-based tools like Unix cron.  
 In every minute or so it checks the active tasks and selects one for execution. It calculates the remaining execution time, sets the timeout value and calls the specified function.
 ```php
-$class->{$purge}($dictPage, $taskData, $options)
+$class->{$method}($dictPage, $taskData, $options)
 ```
 where the $options array contains run-time configuration info like the time when execution should be stopped.
 
@@ -28,26 +28,32 @@ where the $options array contains run-time configuration info like the time when
 Your method (that performs the task) should monitor its execution time and save its progress into $taskData before stopping.  
 It can report progress back using 'task_done' and 'progress' elements in $taskData.  
 ```php
-public function purgeDictionary($dictPage, &$data, $options) {
-  $data['task_done'] = 0; // 0/1
+public function purgeDictionary($dictPage, &$taskData, $options) {
+  $taskData['task_done'] = 0; // 0/1
   ...
   if ($options['timeout'] && $options['timeout'] <= time()) { // time is over
-    $data['progress'] = 35;  // 0...100%
+    $taskData['progress'] = 35;  // 0...100%
     return true;
   }
   ...
   if (... some error happens...) {
-    $data['progress'] = 75;
+    $taskData['progress'] = 75;
     return false;
   }
   ...
-  $data['progress'] = 100;
-  $data['task_done'] = 1;
+  $taskData['progress'] = 100;
+  $taskData['task_done'] = 1;
   return true;
 
 ```
+$taskData may contain any kind of data that can be saved using json_encode().  
+In order to calculate task progress you may want to use maxRecordNumber and recordsProcessed array members, estimate maxRecordNumber somehow (e.g. by dry-running the task) and count recordsProcessed.  
+
 ### Monitoring tasks
 Tasks also have various states and Tasker performs state transitions according to their lifecycle.  
 TaskerAdmin provides an admin interface for Tasker where you can monitor tasks, their state and progress, and you can also perform state transitions.  
 You can also create a template page for tasks if you like and display their progress and data.
 
+## Installation
+Tasker requires a Task template type to store task data.
+TODO atm this should be created manually with the following fields: title(Text), task_data(TextArea), task_state(Integer:0..10), task_running(Integer:0..1), progress(Integer:0..100) and signature(Text).
