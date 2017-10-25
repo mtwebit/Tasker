@@ -2,8 +2,8 @@
 Task management for ProcessWire
 
 ## Purpose
-The module allows the execution of long-running jobs in ProcessWire.  
-It provides a Javascript-based frontend to monitor their progress (using a JQuery progressbar and a debug log area), and a simple backend scheduler to create and execute them in steps that can be performed within PHP's max_execution_time() limit.  
+The module allows the execution of long-running jobs in ProcessWire using a simple backend scheduler (powered by LazyCron or Unix cron). It executes long tasks in steps that can be performed within PHP's max_execution_time() limit.  
+The TaskerAdmin module provides a Javascript-based frontend to monitor task progress (using a JQuery progressbar and a debug log area). It also allows the on-line execution of tasks using periodic backend calls performed by frontend Javascript code.
 
 ## How does it work
 
@@ -17,8 +17,8 @@ With createTask you specify the class and function to call when executing the ta
 Tasker will create a hidden Task page below $page and save all this data into it.  
 
 ### Executing a task
-Tasker can execute tasks using its Javascript frontend, LazyCron or host-based tools like Unix cron.  
-It calculates the remaining execution time, sets the timeout value and calls the specified function.  
+Tasker can execute tasks using its Javascript frontend (TaskerAdmin), LazyCron or host-based tools like Unix cron.  
+It selects the next task that is ready to run, calculates the remaining execution time, sets the timeout value and calls the specified function.  
 ```php
 $class->{$method}($dictPage, $taskData, $params);
 ```
@@ -65,11 +65,20 @@ You can specify execution dependencies between tasks. Simply add a 'dep' option 
 $params['dep'] = $othertask;
 $task = $tasker->createTask($class, $method, $dictPage, 'Task depends on '.$othertask->title, $params);
 ```
+### Ignoring time limit
+Task may decide to ignore max time limit.
+TODO handle these with PHP's builtin error handlers.
+
 ### Reporting progress when max_exec_time is 0
-When your PHP script can run forever (e.g. executed by Unix cron) you should report progress back to Tasker sometime.   
-The Page object of the task (that is performed by your script) is available in 'task' element of $taskData.   
+When your task can run forever (e.g. executed by Unix cron) you should report its progress back to Tasker.   
 ```php
 if (!$options['timeout'] && ... some time passed / some records processed ... {
   $tasker->setProgress($taskData['task'], $taskData['progress']);
 }
+```
+### Testing and debugging tasks
+You should test your task using TaskerAdmin's Javascript execution and monitoring frontend.  
+When a task fails to execute you can query the JSON API directly by adding "api/" to the end of the TaskerAdmin URL (and before the id and cmd arguments). Example:
+```
+https://example.org/processwire/page/tasks/api?id=60343&cmd=exec
 ```
