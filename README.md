@@ -45,7 +45,7 @@ public function purgeDictionary($dictPage, &$taskData, $options) {
   $taskData['task_done'] = 1;
   return true;
 ```
-$taskData is a persistent storage for tasks during their execution. It may contain any kind of data that can be saved using json_encode().  
+$taskData is a persistent storage for tasks during their execution. It may contain any kind of data that can be saved using json_encode(). For example, you can store the task's progress in an 'offset' member if needed.  
 In order to calculate task progress you may want to use records_processed and max_records array members. You can estimate max_records somehow (e.g. by couting pages, file records etc.) and count records_processed during execution.  
 
 ### Monitoring tasks
@@ -57,6 +57,9 @@ You can also create a template page for tasks if you like and display their prog
 Tasker requires a Task template type to store task data.
 TODO atm this should be created manually with the following fields: title(Text), task_data(TextArea), task_state(Integer:0..10), task_running(Integer:0..1), progress(Integer:0..100) and signature(Text).
 These fields will be automagically managed by Tasker.
+
+## Examples
+The [DictionarySupport](https://github.com/mtwebit/DictionarySupport/) module performs long-running imports and deletions using Tasker.
 
 ## Advanced topics
 ### Task dependencies
