@@ -11,10 +11,10 @@ It provides a Javascript-based frontend to monitor their progress (using a JQuer
 Instead of executing a long job (e.g. deleting a large number of pages) you can create a task.
 ```php
 $tasker = wire('modules')->getModule('Tasker');
-$task = $tasker->createTask($class, $method, $dictPage, 'Task title', $arguments);
+$task = $tasker->createTask($class, $method, $page, 'Task title', $arguments);
 ```
-With createTasks you specify the class and function to call when executing the task, its argument (e.g. the root page) and a human-readable title. After the title you can optionally provide an array of arguments to the task and options to Tasker.  
-Tasker will create a hidden Task page below $dictPage and save all this info into it.  
+With createTask you specify the class and function to call when executing the task, its page argument and a human-readable title. After the title you can optionally provide an array of other arguments to the task and to Tasker.  
+Tasker will create a hidden Task page below $page and save all this data into it.  
 
 ### Executing a task
 Tasker can execute tasks using its Javascript frontend, LazyCron or host-based tools like Unix cron.  
