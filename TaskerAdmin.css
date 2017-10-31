@@ -1,0 +1,30 @@
+.ui-progressbar {
+  position: relative;
+  left: 15px;
+  right: 15px;
+  height: 25px;
+}
+  
+.progress-label {
+  color: white;
+  position: absolute;
+  text-align: center;
+  width: 100%;
+  top: 1px;
+  font-weight: bold;
+}
+
+.NoticeMessages ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+ 
+.NoticeMessages li {
+  font: 10px Helvetica, Verdana, sans-serif;
+  padding: 0;
+  margin: 0;
+}
+
+.NoticeMessage { color: green; }
+.NoticeError { color: red; }
