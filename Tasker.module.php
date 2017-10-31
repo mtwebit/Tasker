@@ -272,7 +272,7 @@ class Tasker extends WireData implements Module {
 
     // check and handle signals (handler is in executeTask())
     // signal handler will change (and save) the task's status if the task was interrupted
-    if ($checkEvents) $this->checkEvents($task);
+    if ($checkEvents) $this->checkEvents($task, $taskData);
 
     if ($updateState) {
       // update the task's state from the database (others may have changed it)
@@ -635,5 +635,6 @@ class Tasker extends WireData implements Module {
   public function checkEvents(Page $task, $taskData) {
     // check for Unix signals
     pcntl_signal_dispatch();
+    // TODO check and handle other events
   }
 }
