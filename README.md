@@ -51,6 +51,7 @@ public function longTask($page, &$taskData, $params) {
   $taskData['progress'] = 100;
   $taskData['task_done'] = 1;
   return true;
+}
 ```
 $taskData may contain any kind of data that can be saved using json_encode(). For example, you can store an 'offset' member when processing a large file.  
 In order to calculate task progress you may want to use 'records_processed' and 'max_records' array members. You can estimate 'max_records' somehow (e.g. by couting pages, file records etc.) and count 'records_processed' during execution.  
