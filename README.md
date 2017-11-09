@@ -38,7 +38,7 @@ Example:
 public function longTask($page, &$taskData, $params) {
   $taskData['task_done'] = 0; // 0/1
   ...
-  if ($options['timeout'] && $options['timeout'] <= time()) { // time is over
+  if ($params['timeout'] && $params['timeout'] <= time()) { // time is over
     $taskData['progress'] = 35;  // 0...100%
     return true;
   }
