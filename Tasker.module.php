@@ -96,8 +96,9 @@ class Tasker extends WireData implements Module {
     $taskData['method'] = $method;
     // set page id
     $taskData['pageid'] = (is_numeric($page) ? $page : $page->id);
-    // set initial number of processed records
+    // set initial number of processed records and progress
     $taskData['records_processed'] = 0;
+    $taskData['progress'] = 0;
     // check and adjust dependencies
     if (isset($taskData['dep'])) {
       if (is_array($taskData['dep'])) foreach ($taskData['dep'] as $key => $dep) {
