@@ -529,6 +529,7 @@ class Tasker extends WireData implements Module {
     if ($res === false) {
       $this->message("Task '{$task->title}' failed.", Notice::debug);
       $task->task_state = self::taskFailed;
+      $task->save('task_state');
     } else if ($taskData['task_done']) {
       $this->message("Task '{$task->title}' finished.", Notice::debug);
       $task->task_state = self::taskFinished;
