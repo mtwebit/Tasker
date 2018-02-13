@@ -160,7 +160,8 @@ class TaskerAdmin extends Process implements Module {
       exit;
     }
 
-    // turn off debugging since this is only for executing jobs via javascript
+    // turn off debugging since this is only for executing tasks via javascript
+    // TODO let the user configure debugging 
     $this->config->debug = false;
 
     $tasker = wire('modules')->get('Tasker');
