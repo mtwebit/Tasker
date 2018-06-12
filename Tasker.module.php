@@ -559,7 +559,7 @@ class Tasker extends WireData implements Module {
       $res = false;
       $this->message($e->getMessage());
       $this->message(ob_get_contents());
-      // TODO loggig?
+      // TODO logging?
       // $this->log->save('json', $e->getMessage());
       // $this->log->save('json', ob_get_contents());
       ob_end_clean();
