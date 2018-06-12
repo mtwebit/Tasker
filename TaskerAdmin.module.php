@@ -199,8 +199,9 @@ class TaskerAdmin extends Process implements Module {
           $ret['result'] = $res;
         }
         break;
-      case 'reset':   // stop the task and reset progress
+      case 'reset':   // stop the task, reset progress and logs
         $task->progress = 0;
+        $task->log_messages = '';
       case 'suspend': // stop the task but keep progress
         $ret['status'] = true;
         $tasker->stopTask($task);
