@@ -509,7 +509,7 @@ class Tasker extends WireData implements Module {
     // decode the task data into an associative array
     $taskData = json_decode($task->task_data, true);
 
-    // for the first execution check the requirements and dependencies
+    // before the first execution check the requirements and dependencies
     if (!$taskData['records_processed']) {
       if (!$this->checkTaskRequirements($task, $taskData)) {
         $task->task_state = self::taskFailed;
@@ -550,8 +550,19 @@ class Tasker extends WireData implements Module {
     pcntl_signal(SIGTERM, $itHandler);
     pcntl_signal(SIGINT, $itHandler);
 
-    // execute the function
-    $res = $function($page, $taskData, $params);
+    // execute the function and capture its output
+    ob_start();
+    try {
+      $res = $function($page, $taskData, $params);
+      ob_end_flush();
+    } catch (\Exception $e) {
+      $res = false;
+      $this->message($e->getMessage());
+      $this->message(ob_get_contents());
+      // $this->log->save('json', $e->getMessage());
+      // $this->log->save('json', ob_get_contents());
+      ob_end_clean();
+    }
 
     // check result status and set task state accordingly
     if ($res === false) {

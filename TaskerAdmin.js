@@ -68,7 +68,7 @@ function tasker_client() {
     } else { // return status is not OK
       progressbar.progressbar("value", false);
       progressLabel.text("Error: " + data["result"]);
-      if (debuglog.length) debuglog.append("ERROR: " + data['log']);
+      if (debuglog.length) debuglog.append(data['log']);
     }
   }
 }
