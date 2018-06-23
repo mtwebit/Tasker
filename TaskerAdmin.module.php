@@ -109,8 +109,10 @@ class TaskerAdmin extends Process implements Module {
         return ($tasker->activateTask($task) ? 'Starting task ' : 'Failed to start ').$task->title;
       case 'suspend': // suspend the task but keep progress
         return ($tasker->stopTask($task) ? 'Suspending ' : 'Failed to suspend ').$task->title;
-      case 'reset':   // suspend the task and reset progress = restart task
+      case 'reset':   // reset progress and clear the logs
         $task->progress = 0;
+        $task->log_messages = '';
+        $task->save('log_messages');
         return ($tasker->stopTask($task) ? 'Resetting ' : 'Failed to reset ').$task->title;
       case 'kill':    // stop the task
         return ($tasker->stopTask($task, true) ? 'Killed task ' : 'Failed to kill ').$task->title;
@@ -199,9 +201,11 @@ class TaskerAdmin extends Process implements Module {
           $ret['result'] = $res;
         }
         break;
-      case 'reset':   // stop the task, reset progress and logs
+      case 'reset':   // reset progress and logs before stopping the task
+      // TODO: this is not enough as task_data may contain other things...
         $task->progress = 0;
         $task->log_messages = '';
+        $task->save('log_messages');
       case 'suspend': // stop the task but keep progress
         $ret['status'] = true;
         $tasker->stopTask($task);
