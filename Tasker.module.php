@@ -100,6 +100,8 @@ class Tasker extends WireData implements Module {
     // set initial number of processed and maximum records
     $taskData['records_processed'] = 0;
     $taskData['max_records'] = 0;
+    // set task status
+    $taskData['task_done'] = 0;
     // check and adjust dependencies
     if (isset($taskData['dep'])) {
       if (is_array($taskData['dep'])) foreach ($taskData['dep'] as $key => $dep) {
@@ -569,13 +571,17 @@ class Tasker extends WireData implements Module {
       $this->message("Task '{$task->title}' failed.", Notice::debug);
       $task->task_state = self::taskFailed;
       $task->save('task_state');
-    } else if ($taskData['task_done']) {
-      $this->message("Task '{$task->title}' finished.", Notice::debug);
-      $task->task_state = self::taskFinished;
-      $task->save('task_state');
-      if (isset($taskData['next_task'])) {
-        // activate the next tasks that are waiting for this one
-        $this->activateTaskSet($taskData['next_task']);
+    } else {
+      // TODO result can be a string? Clarify this.
+      $this->message($res);
+      if ($taskData['task_done']) {
+        $this->message("Task '{$task->title}' finished.", Notice::debug);
+        $task->task_state = self::taskFinished;
+        $task->save('task_state');
+        if (isset($taskData['next_task'])) {
+          // activate the next tasks that are waiting for this one
+          $this->activateTaskSet($taskData['next_task']);
+        }
       }
     }
 
