@@ -19,6 +19,7 @@ $info = array(
   'singular' => true, // contains hooks
   'autoload' => false,
   'icon' => 'tasks', // fontawesome icon
+  'permission' => 'tasker-admin',
   'page' => array( // we create an admin page for this module
     'name' => 'tasks',
     'parent' => '/admin/page/',

@@ -70,7 +70,7 @@ class Tasker extends WireData implements Module {
    * 
    * @param $moduleName name of the module
    * @param $method method to call
-   * @param $page page *object or ID) argument to the method
+   * @param $page page object argument to the method
    * @param $title human-readable title of the task
    * @param $taskData optional set of other arguments for the method
    * 
@@ -79,13 +79,14 @@ class Tasker extends WireData implements Module {
   public function createTask($moduleName, $method, $page, $title, $taskData=array()) {
     // remove the ProcessWire namespace prefix from the module's name
     $moduleName = str_replace('ProcessWire\\', '', $moduleName);
+    // TODO better validation. $moduleName could be NULL
     if (!$this->modules->isInstalled($moduleName) || ($page instanceof NullPage)) {
       $this->error("Error creating new task '{$title}' for '{$page->title}' executed by {$moduleName}->{$method}.");
       return NULL;
     }
     $p = $this->wire(new Page());
     if (!is_object($p)) {
-      $this->error("Error creating new page for '{$title}' task.");
+      $this->error("Error creating new page for task '{$title}'.");
       return NULL;
     }
 
@@ -95,10 +96,10 @@ class Tasker extends WireData implements Module {
     $taskData['module'] = $moduleName;
     $taskData['method'] = $method;
     // set page id
-    $taskData['pageid'] = (is_numeric($page) ? $page : $page->id);
-    // set initial number of processed records and progress
+    $taskData['pageid'] = $page->id;
+    // set initial number of processed and maximum records
     $taskData['records_processed'] = 0;
-    $taskData['progress'] = 0;
+    $taskData['max_records'] = 0;
     // check and adjust dependencies
     if (isset($taskData['dep'])) {
       if (is_array($taskData['dep'])) foreach ($taskData['dep'] as $key => $dep) {
@@ -119,7 +120,7 @@ class Tasker extends WireData implements Module {
 
     $p->log_messages = '';
 
-    // check if the task already exists
+    // check if the same task already exists
     $op = $page->child("template={$this->taskTemplate},signature={$p->signature},include=hidden");
     if (!($op instanceof NullPage)) {
       $this->message("Task '{$op->title}' already exists for '{$page->title}' and executed by {$moduleName}->{$method}.", Notice::debug);
@@ -174,6 +175,16 @@ class Tasker extends WireData implements Module {
    */
   public function getTaskById($taskId) {
     return $this->pages->get($taskId);
+  }
+
+  /**
+   * Check if the task is active
+   * 
+   * @param $task Page object of the task
+   * @return false if the task is no longer active
+   */
+  public function isActive($task) {
+    return ($task->task_state == self::taskActive);
   }
 
   /**
@@ -245,7 +256,7 @@ class Tasker extends WireData implements Module {
    * 
    * @param $task1 first task object
    * @param $task1 second task object
-   * @returns true if they were similar enough at the time of their creation :)
+   * @returns true if they were at the time of their creation :)
    */
   public function checkEqual($task1, $task2) {
     return $task1->signature == $task2->signature;
@@ -253,8 +264,9 @@ class Tasker extends WireData implements Module {
 
 
   /**
-   * Save progress, task_data and log messages.
-   * Also checks task status and signal events.
+   * Save progress and actual task_data.
+   * Save and clear log messages.
+   * Also checks task's state and events if requested.
    * 
    * @param $task Page object of the task
    * @param $taskData assoc array of task data
@@ -263,7 +275,8 @@ class Tasker extends WireData implements Module {
    * @return false if the task is no longer active
    */
   public function saveProgress($task, $taskData, $updateState=true, $checkEvents=true) {
-    $task->progress = $taskData['progress'];
+    if ($taskData['max_records']) // report progress if max_records field is aready calculated (or used at all)
+      $task->progress = round(100 * $taskData['records_processed'] / $taskData['max_records'], 2);
     $task->save('progress');
     $task->task_data = json_encode($taskData);
     $task->save('task_data');
@@ -271,7 +284,7 @@ class Tasker extends WireData implements Module {
     $task->save('log_messages');
     wire('notices')->removeAll();
 
-    // check and handle signals (handler is in executeTask())
+    // check and handle signals (handler is defined in executeTask())
     // signal handler will change (and save) the task's status if the task was interrupted
     if ($checkEvents) $this->checkEvents($task, $taskData);
 
@@ -284,9 +297,23 @@ class Tasker extends WireData implements Module {
       ));
       $task->task_state = $task2->task_state;
     }
-    // return: is the task is still active?
-    return ($task->task_state == self::taskActive);
   }
+
+  /**
+   * Check if a task milestone has been reached and save progress if yes.
+   * Task progress should be saved at certain time points in order to monitor them.
+   * 
+   * @param $task ProcessWire Page object of a task
+   * @param $taskData assoc array of task data
+   * @param $updateState if true task_state will be updated from the database
+   * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
+   * @returns true if milestone is reached
+   */
+  public function saveProgressAtMilestone(Page $task, $taskData, $updateState=true, $checkEvents=true) {
+    if ($task->modified > time() - $this->ajaxTimeout) return false;
+    return $this->saveProgress($task, $taskData, $updateState, $checkEvents);
+  }
+
 
 
   /**
@@ -427,7 +454,7 @@ class Tasker extends WireData implements Module {
 
   /**
    * Start executing a task (pre-flight checks).
-   * This should be called by HTTP API routers.
+   * This should be called by HTTP API routers or other modules.
    * Calls executeTaskNow() if everything is fine.
    * 
    * @param $task ProcessWire Page object of a task
@@ -541,7 +568,7 @@ class Tasker extends WireData implements Module {
       }
     }
 
-    // update task state and data (don't update state and don't check for events)
+    // save task data (don't update state and don't check for events)
     $this->saveProgress($task, $taskData, false, false);
 
     // the task is no longer running
