@@ -535,7 +535,7 @@ class Tasker extends WireData implements Module {
 
     // note that the task is actually running now
     $this->message("Tasker is executing '{$task->title}' requested by {$params['invoker']}.", Notice::debug);
-    $this->message("------------ Task '{$task->title}' started at ".date(DATE_RFC2822).' ------------', Notice::debug);
+    $this->message("------------ Task '{$task->title}' started/continued at ".date(DATE_RFC2822).' ------------', Notice::debug);
     $task->task_running = 1;
     $task->save();
 
