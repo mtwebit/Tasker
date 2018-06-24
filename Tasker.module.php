@@ -8,7 +8,7 @@
  * Allows modules to execute long-running tasks (i.e. longer than PHP's max_exec_time).
  * It supports Unix Cron, Javascript and a LazyCron scheduling of tasks.
  * 
- * Copyright 2017 Tamas Meszaros <mt+github@webit.hu>
+ * Copyright 2017 Tamas Meszaros <mt+git@webit.hu>
  * This file licensed under Mozilla Public License v2.0 http://mozilla.org/MPL/2.0/
  */
 
@@ -100,6 +100,8 @@ class Tasker extends WireData implements Module {
     // set initial number of processed and maximum records
     $taskData['records_processed'] = 0;
     $taskData['max_records'] = 0;
+    // set milestone time value
+    $taskData['milestone_timeout'] = $this->ajaxTimeout;
     // set task status
     $taskData['task_done'] = 0;
     // check and adjust dependencies
@@ -268,13 +270,12 @@ class Tasker extends WireData implements Module {
   /**
    * Save progress and actual task_data.
    * Save and clear log messages.
-   * Also checks task's state and events if requested.
+   * Also check task's state and events if requested.
    * 
    * @param $task Page object of the task
    * @param $taskData assoc array of task data
    * @param $updateState if true task_state will be updated from the database
    * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
-   * @return false if the task is no longer active
    */
   public function saveProgress($task, $taskData, $updateState=true, $checkEvents=true) {
     if ($taskData['max_records']) // report progress if max_records field is aready calculated (or used at all)
@@ -282,6 +283,7 @@ class Tasker extends WireData implements Module {
     $task->save('progress');
     $task->task_data = json_encode($taskData);
     $task->save('task_data');
+    // store and clear messages
     foreach(wire('notices') as $notice) $task->log_messages .= $notice->text."\n";
     $task->save('log_messages');
     wire('notices')->removeAll();
@@ -311,9 +313,27 @@ class Tasker extends WireData implements Module {
    * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
    * @returns true if milestone is reached
    */
-  public function saveProgressAtMilestone(Page $task, $taskData, $updateState=true, $checkEvents=true) {
-    if ($task->modified > time() - $this->ajaxTimeout) return false;
-    return $this->saveProgress($task, $taskData, $updateState, $checkEvents);
+  public function saveProgressAtMilestone(Page $task, $taskData, $params, $updateState=true, $checkEvents=true) {
+    // do nothing if the task was modified recently
+    if ($task->modified + $this->ajaxTimeout > time()) return false;
+
+    // check whether the task is still active (not stopped by others)
+    if (!$tasker->isActive($task)) {
+      $this->message("Suspending the execution of task '{$task->title}' since it is no longer active.", Notice::debug);
+    }
+
+    // suspend the task if the allowed execution time is over
+    if ($params['timeout'] && $params['timeout'] <= time()) {
+      $this->message("Suspending the execution of task '{$task->title}' since maximum execution time is over.", Notice::debug);
+      $task->task_state = self::taskSuspended;
+    }
+
+    // TODO (memory_get_usage() / 1024)) . 'KB'
+
+    // save the progress
+    $this->saveProgress($task, $taskData, $updateState, $checkEvents);
+
+    return true;
   }
 
   /**
