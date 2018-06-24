@@ -24,6 +24,9 @@ class TaskerAdmin extends Process implements Module {
     Tasker::taskKilled => 'killed',
     Tasker::taskFailed => 'failed',
   );
+  // admin path
+  const taskerAdminUrl = wire('config')->urls->admin.'page/tasks/';
+
 
   /**
    * Called only when this module is installed
@@ -54,7 +57,7 @@ class TaskerAdmin extends Process implements Module {
       $this->error('Tasker module is missing.');
     }
     // set admin URL
-    $this->adminUrl = wire('config')->urls->admin.'page/tasks/';
+    $this->adminUrl = taskerAdminUrl;
   }
 
 /***********************************************************************
