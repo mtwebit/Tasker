@@ -17,12 +17,15 @@ class Tasker extends WireData implements Module {
   private $startTime;
   // task states
   const taskUnknown = 0;
-  const taskActive = 1;
-  const taskWaiting = 2;
-  const taskSuspended = 3;
-  const taskFinished = 4;
-  const taskKilled = 5;
-  const taskFailed = 6;
+  const taskActive = 1;     // ready to run
+  const taskWaiting = 2;    // waiting to be executed
+  const taskSuspended = 3;  // suspended by the user
+  const taskFinished = 4;   // finished
+  const taskKilled = 5;     // killed by the user (progress is reset to zero)
+  const taskFailed = 6;     // failed to execute
+  // TODO make this configurable
+  // memory limit threshold
+  const mem_thr = 5*1024*1024;
 
 /***********************************************************************
  * MODULE SETUP
@@ -317,21 +320,38 @@ class Tasker extends WireData implements Module {
     // do nothing if the task was modified recently
     if ($task->modified + $this->ajaxTimeout > time()) return false;
 
+    // save the progress
+    // this may alter the task's state (if updateState or checkEvents is true
+    $this->saveProgress($task, $taskData, $updateState, $checkEvents);
+
+    return true;
+  }
+
+  /**
+   * Check if a task can run any longer
+   * 
+   * @param $task ProcessWire Page object of a task
+   * @param $params runtime parameters including time and memory limit
+   * @returns true if milestone is reached
+   */
+  public function allowedToExecute(Page $task, $params) {
     // check whether the task is still active (not stopped by others)
-    if (!$tasker->isActive($task)) {
-      $this->message("Suspending the execution of task '{$task->title}' since it is no longer active.", Notice::debug);
+    if (!$this->isActive($task)) {
+      $this->message("Stopping the execution of task '{$task->title}' since it is no longer active.", Notice::debug);
+      return false;
     }
 
     // suspend the task if the allowed execution time is over
     if ($params['timeout'] && $params['timeout'] <= time()) {
-      $this->message("Suspending the execution of task '{$task->title}' since maximum execution time is over.", Notice::debug);
-      $task->task_state = self::taskSuspended;
+      $this->message("Stopping the execution of task '{$task->title}' since maximum execution time is over.", Notice::debug);
+      return false;
     }
 
-    // TODO (memory_get_usage() / 1024)) . 'KB'
-
-    // save the progress
-    $this->saveProgress($task, $taskData, $updateState, $checkEvents);
+    if (isset($params['memory_limit'])
+        && memory_get_usage() >= $params['memory_limit']){
+      $this->message("Stopping the execution of task '{$task->title}' since memory limit is too close.", Notice::debug);
+      return false;
+    }
 
     return true;
   }
@@ -423,6 +443,7 @@ class Tasker extends WireData implements Module {
     // set up runtime parameters
     $params = array();
     $params['timeout'] = $this->startTime + $this->lazyCronTimeout;
+    $params['memory_limit'] = self::getSafeMemoryLimit();
     $params['invoker'] = 'LazyCron';
 
     if ($this->config->debug) echo "LazyCron invoking Tasker to execute '{$task->title}'.<br />\n";
@@ -456,6 +477,7 @@ class Tasker extends WireData implements Module {
     // set up runtime parameters
     $params = array();
     $params['timeout'] = 0;
+    $params['memory_limit'] = self::getSafeMemoryLimit();
     $params['invoker'] = 'Cron';
 
     if ($this->config->debug) echo "Cron invoking Tasker to execute '{$task->title}'.\n";
@@ -507,6 +529,11 @@ class Tasker extends WireData implements Module {
     // set the timeout
     if (!isset($params['timeout'])) {
       $params['timeout'] = $this->startTime + $this->ajaxTimeout;
+    }
+
+    // set the memory limit
+    if (!isset($params['memory_limit'])) {
+      $params['memory_limit'] = self::getSafeMemoryLimit();
     }
 
     return $this->executeTaskNow($task, $params);
@@ -702,5 +729,22 @@ class Tasker extends WireData implements Module {
     // check for Unix signals
     pcntl_signal_dispatch();
     // TODO check and handle other events
+  }
+
+  /**
+   * Return the byte value of a php ini settings.
+   * Taken from http://php.net/manual/en/function.ini-get.php
+   *
+   * @param $val string value that may contain G M or K modifiers
+   * @returns byte value
+   */
+  protected static function getSafeMemoryLimit() {
+    $size_str = trim(ini_get('memory_limit'));
+    switch(substr($size_str, -1)) {
+        case 'M': case 'm': return (int)$size_str * 1048576 - self::mem_thr;
+        case 'K': case 'k': return (int)$size_str * 1024 - self::mem_thr;
+        case 'G': case 'g': return (int)$size_str * 1073741824 - self::mem_thr;
+        default: return $size_str;
+    }
   }
 }
