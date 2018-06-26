@@ -76,7 +76,7 @@ function tasker_client() {
 // perform a HTTP AJAX (JSON) request and handle errors if necessary
 function performApiCall(url, callback, progressbar) {
   var debuglog = $("#tasker").next("div.NoticeMessages"),
-      timeout = $("#tasker").attr('timeout'),
+      timeout = $("#tasker").attr('timeout')+15, // add some extra time
       unloading = false;
 
   // signal if the user is leaving the page
