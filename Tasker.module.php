@@ -204,7 +204,7 @@ class Tasker extends WireData implements Module {
   public function activateTask(Page $task) {
     $taskData = json_decode($task->task_data, true);
     if (!$this->checkTaskDependencies($task, $taskData)) {
-      $this->warning("Task '{$task->title}' cannot be activated since one of its dependencies is not met.");
+      $this->warning("Task '{$task->title}' cannot be activated because one of its dependencies is not met.");
       return false;
     }
     $task->task_state = self::taskActive;
@@ -337,19 +337,19 @@ class Tasker extends WireData implements Module {
   public function allowedToExecute(Page $task, $params) {
     // check whether the task is still active (not stopped by others)
     if (!$this->isActive($task)) {
-      $this->message("Stopping the execution of task '{$task->title}' since it is no longer active.", Notice::debug);
+      $this->message("Stopping the execution of task '{$task->title}' because it is no longer active.", Notice::debug);
       return false;
     }
 
     // suspend the task if the allowed execution time is over
     if ($params['timeout'] && $params['timeout'] <= time()) {
-      $this->message("Stopping the execution of task '{$task->title}' since maximum execution time is over.", Notice::debug);
+      $this->message("Stopping the execution of task '{$task->title}' because maximum execution time is over.", Notice::debug);
       return false;
     }
 
     if (isset($params['memory_limit'])
         && memory_get_usage() >= $params['memory_limit']){
-      $this->message("Stopping the execution of task '{$task->title}' since memory limit is too close.", Notice::debug);
+      $this->message("Stopping the execution of task '{$task->title}' because memory limit is too close.", Notice::debug);
       return false;
     }
 
@@ -595,8 +595,18 @@ class Tasker extends WireData implements Module {
       $task->task_state = self::taskSuspended; // the task will be stopped
       return;
     };
+
+    // set a custom PHP error handler for WARNINGS
+    set_error_handler(function($errno, $errstr, $errfile, $errline, array $errcontext) use ($task) {
+      $this->message("{$task->title} encountered {$errstr}[{$errno}] in {$errfile} at line {$errline}.");
+      return true; // bypass PHP error handling for warnings
+    });
+    //}, E_WARNING);
+
     pcntl_signal(SIGTERM, $itHandler);
     pcntl_signal(SIGINT, $itHandler);
+
+    // TODO use a custom error handler to catch all errors?
 
     // execute the function and capture its output
     ob_start();
@@ -612,6 +622,8 @@ class Tasker extends WireData implements Module {
       // $this->log->save('json', ob_get_contents());
       ob_end_clean();
     }
+    
+    restore_error_handler();
 
     // check result status and set task state accordingly
     if ($res === false) {
