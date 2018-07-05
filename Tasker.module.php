@@ -127,14 +127,6 @@ class Tasker extends WireData implements Module {
 
     $p->log_messages = '';
 
-    // check if the same task already exists
-    $op = $page->child("template={$this->taskTemplate},signature={$p->signature},include=hidden");
-    if (!($op instanceof NullPage)) {
-      $this->message("Task '{$op->title}' already exists for '{$page->title}' and executed by {$moduleName}->{$method}.", Notice::debug);
-      unset($p);
-      return $op;
-    }
-
     // tasks are hidden pages directly below their object (or any other page they belong to)
     $p->parent = $page;
     $p->title = $title;
@@ -142,6 +134,14 @@ class Tasker extends WireData implements Module {
     $p->progress = 0;
     $p->task_state = self::taskWaiting;
     $p->task_running = 0;
+
+    // suspend this task and warn the user if the same task already exists
+    $op = $page->child("template={$this->taskTemplate},signature={$p->signature},include=hidden");
+    if (!($op instanceof NullPage)) {
+      $this->warning("The same task '{$op->title}' exists for '{$page->title}' and executed by {$moduleName}->{$method}.");
+      $p->task_state = self::taskSuspended;
+    }
+
     $p->save();
     $this->message("Created task '{$title}' for '{$page->title}' executed by {$moduleName}->{$method}().", Notice::debug);
     return $p;
