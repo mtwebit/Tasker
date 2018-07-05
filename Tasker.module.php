@@ -317,8 +317,10 @@ class Tasker extends WireData implements Module {
    * @returns true if milestone is reached
    */
   public function saveProgressAtMilestone(Page $task, $taskData, $params, $updateState=true, $checkEvents=true) {
-    // do nothing if the task was modified recently
-    if ($task->modified + $this->ajaxTimeout > time()) return false;
+
+    // return if there is no milestone or it is not reached
+    if (!isset($taskData['milestone']) || $taskData['milestone'] > $taskData['records_processed'])
+      return false;
 
     // save the progress
     // this may alter the task's state (if updateState or checkEvents is true
