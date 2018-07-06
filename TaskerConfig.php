@@ -21,6 +21,7 @@ class TaskerConfig extends ModuleConfig {
       'taskTemplate' => 'tasker-task',
       'ajaxTimeout' => 15,
       'lazyCronTimeout' => 15,
+      'debug' => 1,
       );
   }
 
@@ -101,12 +102,19 @@ For more information check the module\'s home at https://github.com/mtwebit/Task
     $f->description = __('Required fields: task_running, task_data, task_state, ...');
     $f->options = array();
     $f->required = true;
-    $f->columnWidth = 100;
+    $f->columnWidth = 50;
     foreach($this->wire('templates') as $template) {
       if ($template->hasField('task_data')) {
         $f->addOption($template->name, $template->name);
       }
     }
+    $fieldset->add($f);
+
+    $f = $this->modules->get('InputfieldCheckbox');
+    $f->attr('name', 'debug');
+    $f->label = __('Debug mode');
+    $f->description = __('Enable detailed log messages while executing tasks.');
+    $f->columnWidth = 50;
     $fieldset->add($f);
 
     $inputfields->add($fieldset);

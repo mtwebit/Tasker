@@ -159,11 +159,11 @@ class TaskerAdmin extends Process implements Module {
       exit;
     }
 
-    // turn off debugging since this is only for executing tasks via javascript
-    // TODO let the user configure debugging 
-    $this->config->debug = false;
-
     $tasker = wire('modules')->get('Tasker');
+
+    // turn on/off debugging according to the user's setting
+    $this->config->debug = $tasker->debug;
+
     $task = $tasker->getTaskById($taskId);
     if ($task instanceof NullPage) {
       $ret['result'] = 'No matching task found.';
