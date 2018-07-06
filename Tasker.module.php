@@ -349,7 +349,7 @@ class Tasker extends WireData implements Module {
    * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
    */
   public function saveProgress($task, $taskData, $updateState=true, $checkEvents=true) {
-    if ($taskData['max_records']) // report progress if max_records field is aready calculated (or used at all)
+    if ($taskData['max_records']) // report progress if max_records is calculated
       $task->progress = round(100 * $taskData['records_processed'] / $taskData['max_records'], 2);
     $task->save('progress');
     $task->task_data = json_encode($taskData);
@@ -608,14 +608,12 @@ class Tasker extends WireData implements Module {
     if ($res === false) {
       $this->message("Task '{$task->title}' failed.", Notice::debug);
       $task->task_state = self::taskFailed;
-// will be saved later      $task->save('task_state');
+      $task->save('task_state');  // must be saved now
     } else {
-      // TODO result can be a string? Clarify this.
-      $this->message($res);
       if ($taskData['task_done']) {
         $this->message("Task '{$task->title}' finished.", Notice::debug);
         $task->task_state = self::taskFinished;
-// will be saved later        $task->save('task_state');
+        $task->save('task_state');  // must be saved now
         if (isset($taskData['next_task'])) {
           // activate the next tasks that are waiting for this one
           $this->activateTaskSet($taskData['next_task']);
