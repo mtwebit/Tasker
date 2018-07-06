@@ -18,11 +18,10 @@ class Tasker extends WireData implements Module {
   // task states
   const taskUnknown = 0;
   const taskActive = 1;     // ready to run
-  const taskWaiting = 2;    // waiting to be executed
-  const taskSuspended = 3;  // suspended by the user
-  const taskFinished = 4;   // finished
-  const taskKilled = 5;     // killed by the user (progress is reset to zero)
-  const taskFailed = 6;     // failed to execute
+  const taskWaiting = 2;    // waiting to be activated
+  const taskFinished = 3;   // finished
+  const taskKilled = 4;     // killed by the user (progress is reset to zero)
+  const taskFailed = 5;     // failed to execute
   // TODO make this configurable
   // memory limit threshold
   const mem_thr = 5*1024*1024;
@@ -103,8 +102,6 @@ class Tasker extends WireData implements Module {
     // set initial number of processed and maximum records
     $taskData['records_processed'] = 0;
     $taskData['max_records'] = 0;
-    // set milestone time value
-    $taskData['milestone_timeout'] = $this->ajaxTimeout;
     // set task status
     $taskData['task_done'] = 0;
     // check and adjust dependencies
@@ -139,24 +136,12 @@ class Tasker extends WireData implements Module {
     $op = $page->child("template={$this->taskTemplate},signature={$p->signature},include=hidden");
     if (!($op instanceof NullPage)) {
       $this->warning("The same task '{$op->title}' exists for '{$page->title}' and executed by {$moduleName}->{$method}.");
-      $p->task_state = self::taskSuspended;
+      $p->task_state = self::taskWaiting;
     }
 
     $p->save();
     $this->message("Created task '{$title}' for '{$page->title}' executed by {$moduleName}->{$method}().", Notice::debug);
     return $p;
-  }
-
-  /**
-   * Trash a task (and set it to killed state).
-   * 
-   * @param $task ProcessWire Page object of a task
-   */
-  public function trashTask(Page $task) {
-    $task->task_state = self::taskKilled;
-    $task->trash();
-    $this->message("Task '{$task->title}' has been removed.", Notice::debug);
-    return true;
   }
 
   /**
@@ -182,6 +167,17 @@ class Tasker extends WireData implements Module {
    */
   public function getTaskById($taskId) {
     return $this->pages->get($taskId);
+  }
+
+  /**
+   * Check whether two tasks are equal or not
+   * 
+   * @param $task1 first task object
+   * @param $task1 second task object
+   * @returns true if they were at the time of their creation :)
+   */
+  public function checkEqual($task1, $task2) {
+    return $task1->signature == $task2->signature;
   }
 
   /**
@@ -235,126 +231,39 @@ class Tasker extends WireData implements Module {
 
   /**
    * Stop (suspend or kill) a task (set it to non-running state).
-   * This only sets the state. The task will stop after finishing the actual step.
-   * Progress will also be saved.
+   * Note: if a task is already running it may need some time to stop and reset.
    * 
    * @param $task ProcessWire Page object of a task
    * @param $kill kill the task?
+   * @param $reset reset the task's progress? (reset is set to true when kill is true)
    */
-  public function stopTask(Page $task, $kill = false) {
+  public function stopTask(Page $task, $kill = false, $reset = false) {
     if ($kill) {
       $task->task_state = self::taskKilled;
       // TODO $task->log .= "The task has been terminated by ....\n";
       $this->message("Task '{$task->title}' has been killed.", Notice::debug);
-    } else if ($task->progress == 0) {
-      $task->task_state = self::taskWaiting;
-      $this->message("Task '{$task->title}' has been reset", Notice::debug);
+      $reset = 1;
     } else {
-      $task->task_state = self::taskSuspended;
+      $task->task_state = self::taskWaiting;
       $this->message("Task '{$task->title}' has been suspended.", Notice::debug);
     }
-    $task->save('progress');
     $task->save('task_state');
+    if ($reset) {
+      $this->resetProgress($task);
+    }
     return true;
   }
 
   /**
-   * Check whether two tasks are equal or not
-   * 
-   * @param $task1 first task object
-   * @param $task1 second task object
-   * @returns true if they were at the time of their creation :)
-   */
-  public function checkEqual($task1, $task2) {
-    return $task1->signature == $task2->signature;
-  }
-
-
-  /**
-   * Save progress and actual task_data.
-   * Save and clear log messages.
-   * Also check task's state and events if requested.
-   * 
-   * @param $task Page object of the task
-   * @param $taskData assoc array of task data
-   * @param $updateState if true task_state will be updated from the database
-   * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
-   */
-  public function saveProgress($task, $taskData, $updateState=true, $checkEvents=true) {
-    if ($taskData['max_records']) // report progress if max_records field is aready calculated (or used at all)
-      $task->progress = round(100 * $taskData['records_processed'] / $taskData['max_records'], 2);
-    $task->save('progress');
-    $task->task_data = json_encode($taskData);
-    $task->save('task_data');
-    // store and clear messages
-    foreach(wire('notices') as $notice) $task->log_messages .= $notice->text."\n";
-    $task->save('log_messages');
-    wire('notices')->removeAll();
-
-    // check and handle signals (handler is defined in executeTask())
-    // signal handler will change (and save) the task's status if the task was interrupted
-    if ($checkEvents) $this->checkEvents($task, $taskData);
-
-    if ($updateState) {
-      // update the task's state from the database (others may have changed it)
-      $task2 = $this->wire('pages')->getById($task->id, array(
-        'cache' => false, // don't let it write to cache
-        'getFromCache' => false, // don't let it read from cache
-        'getOne' => true, // return a Page instead of a PageArray
-      ));
-      $task->task_state = $task2->task_state;
-    }
-  }
-
-  /**
-   * Check if a task milestone has been reached and save progress if yes.
-   * Task progress should be saved at certain time points in order to monitor them.
+   * Trash a task (and set it to killed state).
    * 
    * @param $task ProcessWire Page object of a task
-   * @param $taskData assoc array of task data
-   * @param $updateState if true task_state will be updated from the database
-   * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
-   * @returns true if milestone is reached
    */
-  public function saveProgressAtMilestone(Page $task, $taskData, $params, $updateState=true, $checkEvents=true) {
-
-    // return if there is no milestone or it is not reached
-    if (!isset($taskData['milestone']) || $taskData['milestone'] > $taskData['records_processed'])
-      return false;
-
-    // save the progress
-    // this may alter the task's state (if updateState or checkEvents is true
-    $this->saveProgress($task, $taskData, $updateState, $checkEvents);
-
-    return true;
-  }
-
-  /**
-   * Check if a task can run any longer
-   * 
-   * @param $task ProcessWire Page object of a task
-   * @param $params runtime parameters including time and memory limit
-   * @returns true if milestone is reached
-   */
-  public function allowedToExecute(Page $task, $params) {
-    // check whether the task is still active (not stopped by others)
-    if (!$this->isActive($task)) {
-      $this->message("Stopping the execution of task '{$task->title}' because it is no longer active.", Notice::debug);
-      return false;
-    }
-
-    // suspend the task if the allowed execution time is over
-    if ($params['timeout'] && $params['timeout'] <= time()) {
-      $this->message("Stopping the execution of task '{$task->title}' because maximum execution time is over.", Notice::debug);
-      return false;
-    }
-
-    if (isset($params['memory_limit'])
-        && memory_get_usage() >= $params['memory_limit']){
-      $this->message("Stopping the execution of task '{$task->title}' because memory limit is too close.", Notice::debug);
-      return false;
-    }
-
+  public function trashTask(Page $task) {
+    $task->task_state = self::taskKilled;
+    $task->save('task_state');
+    $task->trash();
+    $this->message("Task '{$task->title}' has been removed.", Notice::debug);
     return true;
   }
 
@@ -425,6 +334,87 @@ class Tasker extends WireData implements Module {
     return true;
   }
 
+
+/***********************************************************************
+ * TASK DATA AND PROGRESS MANAGEMENT
+ **********************************************************************/
+  /**
+   * Save progress and actual task_data.
+   * Save and clear log messages.
+   * Also check task's state and events if requested.
+   * 
+   * @param $task Page object of the task
+   * @param $taskData assoc array of task data
+   * @param $updateState if true task_state will be updated from the database
+   * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
+   */
+  public function saveProgress($task, $taskData, $updateState=true, $checkEvents=true) {
+    if ($taskData['max_records']) // report progress if max_records field is aready calculated (or used at all)
+      $task->progress = round(100 * $taskData['records_processed'] / $taskData['max_records'], 2);
+    $task->save('progress');
+    $task->task_data = json_encode($taskData);
+    $task->save('task_data');
+    // store and clear messages
+    foreach(wire('notices') as $notice) $task->log_messages .= $notice->text."\n";
+    $task->save('log_messages');
+    wire('notices')->removeAll();
+
+    // check and handle signals (handler is defined in executeTask())
+    // signal handler will change (and save) the task's status if the task was interrupted
+    if ($checkEvents) $this->checkEvents($task, $taskData);
+
+    if ($updateState) {
+      // update the task's state from the database (others may have changed it)
+      $task2 = $this->wire('pages')->getById($task->id, array(
+        'cache' => false, // don't let it write to cache
+        'getFromCache' => false, // don't let it read from cache
+        'getOne' => true, // return a Page instead of a PageArray
+      ));
+      $task->task_state = $task2->task_state;
+    }
+  }
+
+  /**
+   * Check if a task milestone has been reached and save progress if yes.
+   * Task progress should be saved at certain time points in order to monitor them.
+   * 
+   * @param $task ProcessWire Page object of a task
+   * @param $taskData assoc array of task data
+   * @param $updateState if true task_state will be updated from the database
+   * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
+   * @returns true if milestone is reached
+   */
+  public function saveProgressAtMilestone(Page $task, $taskData, $params, $updateState=true, $checkEvents=true) {
+
+    // return if there is no milestone or it is not reached
+    if (!isset($taskData['milestone']) || $taskData['milestone'] > $taskData['records_processed'])
+      return false;
+
+    // save the progress
+    // this may alter the task's state (if updateState or checkEvents is true
+    $this->saveProgress($task, $taskData, $updateState, $checkEvents);
+
+    return true;
+  }
+
+  /**
+   * Reset the task's progress and clear log messages.
+   * 
+   * @param $task Page object of the task
+   */
+  public function resetProgress($task) {
+    // decode the task data into an associative array
+    $taskData = json_decode($task->task_data, true);
+    // an reinitialize it
+    $taskData['records_processed'] = 0;
+    $taskData['max_records'] = 0;
+    unset($taskData['milestone']);
+    $taskData['task_done'] = 0;
+    $task->progress = 0;
+    $task->save('progress');
+    $task->task_data = json_encode($taskData);
+    $task->save('task_data');
+  }
 
 /***********************************************************************
  * EXECUTING TASKS
@@ -517,12 +507,6 @@ class Tasker extends WireData implements Module {
       return false;
     }
 
-    // check task state
-    if ($task->task_state != self::taskActive) {
-      $this->warning("Task '{$task->title}' is not active.");
-      return false;
-    }
-
     // set who is executing the task
     if (!isset($params['invoker'])) {
       $params['invoker'] = $this->user->name;
@@ -549,11 +533,7 @@ class Tasker extends WireData implements Module {
    * @param $params runtime parameters for task execution
    */
   private function executeTaskNow(Page $task, $params) {
-    // check if we have time to do anything or not
-    if ($params['timeout'] && $params['timeout'] <= time()) {
-      $this->message("No time left to execute the task '{$task->title}'.");
-      return false;
-    }
+    if (!$this->allowedToExecute($task, $params)) return;
 
     // decode the task data into an associative array
     $taskData = json_decode($task->task_data, true);
@@ -566,7 +546,7 @@ class Tasker extends WireData implements Module {
         return false;
       }
       if (!$this->checkTaskDependencies($task, $taskData)) {
-        $task->task_state = self::taskSuspended;
+        $task->task_state = self::taskWaiting;
         $task->save('task_state');
         return false;
       }
@@ -583,10 +563,10 @@ class Tasker extends WireData implements Module {
     $page = $this->pages->get($taskData['pageid']);
 
     // note that the task is actually running now
-    $this->message("Tasker is executing '{$task->title}' requested by {$params['invoker']}.", Notice::debug);
     $this->message("------------ Task '{$task->title}' started/continued at ".date(DATE_RFC2822).' ------------', Notice::debug);
+    $this->message("Tasker is executing '{$task->title}' requested by {$params['invoker']}.", Notice::debug);
     $task->task_running = 1;
-    $task->save();
+    $task->save('task_running');
 
     // pass over the task object to the function
     $params['task'] = $task;
@@ -594,21 +574,18 @@ class Tasker extends WireData implements Module {
     // set a signal handler to handle stop requests
     $itHandler = function ($signo) use ($task) {
       $this->messages('Task was killed by user request');
-      $task->task_state = self::taskSuspended; // the task will be stopped
+      $task->task_state = self::taskWaiting; // the task will be stopped
       return;
     };
+    pcntl_signal(SIGTERM, $itHandler);
+    pcntl_signal(SIGINT, $itHandler);
 
-    // set a custom PHP error handler for WARNINGS
+    // set a custom PHP error handler for WARNINGS and ERRORS
     set_error_handler(function($errno, $errstr, $errfile, $errline, array $errcontext) use ($task) {
       $this->message("{$task->title} encountered {$errstr}[{$errno}] in {$errfile} at line {$errline}.");
       return true; // bypass PHP error handling for warnings
     });
-    //}, E_WARNING);
-
-    pcntl_signal(SIGTERM, $itHandler);
-    pcntl_signal(SIGINT, $itHandler);
-
-    // TODO use a custom error handler to catch all errors?
+    //}, E_WARNING|E_ERROR);
 
     // execute the function and capture its output
     ob_start();
@@ -631,14 +608,14 @@ class Tasker extends WireData implements Module {
     if ($res === false) {
       $this->message("Task '{$task->title}' failed.", Notice::debug);
       $task->task_state = self::taskFailed;
-      $task->save('task_state');
+// will be saved later      $task->save('task_state');
     } else {
       // TODO result can be a string? Clarify this.
       $this->message($res);
       if ($taskData['task_done']) {
         $this->message("Task '{$task->title}' finished.", Notice::debug);
         $task->task_state = self::taskFinished;
-        $task->save('task_state');
+// will be saved later        $task->save('task_state');
         if (isset($taskData['next_task'])) {
           // activate the next tasks that are waiting for this one
           $this->activateTaskSet($taskData['next_task']);
@@ -657,7 +634,36 @@ class Tasker extends WireData implements Module {
   }
 
   /**
-   * Check whether a task is ready for execution.
+   * Check if a task can run (or continue running)
+   * 
+   * @param $task ProcessWire Page object of a task
+   * @param $params runtime parameters including time and memory limit
+   * @returns true if the task can execute
+   */
+  public function allowedToExecute(Page $task, $params) {
+    // check whether the task is still active (not stopped by others)
+    if (!$this->isActive($task)) {
+      $this->message("Task '{$task->title}' is stopped because it is not active.", Notice::debug);
+      return false;
+    }
+
+    // suspend the task if the allowed execution time is over
+    if ($params['timeout'] && $params['timeout'] <= time()) {
+      $this->message("Task '{$task->title}' is stopped due to time limits.", Notice::debug);
+      return false;
+    }
+
+    if (isset($params['memory_limit'])
+        && memory_get_usage() >= $params['memory_limit']){
+      $this->message("Task '{$task->title}' is stopped due to memory limits.", Notice::debug);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check whether a task meets its execution requirements
    * 
    * @param $task ProcessWire Page object of a task
    * @param $taskData array of task data
@@ -665,6 +671,9 @@ class Tasker extends WireData implements Module {
    * @returns true if everything is fine
    */
   public function checkTaskRequirements(Page $task, $taskData) {
+
+    $this->message("Checking requirements for '{$task->title}'.", Notice::debug);
+
     // check if module or function exists
     $module = $taskData['module'];
     $method = $taskData['method'];
@@ -697,7 +706,7 @@ class Tasker extends WireData implements Module {
   }
 
   /**
-   * Check whether dependencies are met.
+   * Check whether a task's execution dependencies are met.
    * 
    * @param $task ProcessWire Page object of a task
    * @param $taskData array of task data
@@ -707,7 +716,7 @@ class Tasker extends WireData implements Module {
   public function checkTaskDependencies(Page $task, $taskData) {
     if (!isset($taskData['dep'])) return true;
 
-    // $this->message("Checking dependencies for '{$task->title}'.", Notice::debug);
+    $this->message("Checking dependencies for '{$task->title}'.", Notice::debug);
 
     // may depend on a single task
     if (is_numeric($taskData['dep'])) {

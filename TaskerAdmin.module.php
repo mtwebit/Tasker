@@ -19,7 +19,6 @@ class TaskerAdmin extends Process implements Module {
     Tasker::taskUnknown => 'unknown',
     Tasker::taskActive => 'active',
     Tasker::taskWaiting => 'waiting',
-    Tasker::taskSuspended => 'suspended',
     Tasker::taskFinished => 'finished',
     Tasker::taskKilled => 'killed',
     Tasker::taskFailed => 'failed',
@@ -111,11 +110,8 @@ class TaskerAdmin extends Process implements Module {
       case 'suspend': // suspend the task but keep progress
         return ($tasker->stopTask($task) ? 'Suspending ' : 'Failed to suspend ').$task->title;
       case 'reset':   // reset progress and clear the logs
-        $task->progress = 0;
-        $task->log_messages = '';
-        $task->save('log_messages');
-        return ($tasker->stopTask($task) ? 'Resetting ' : 'Failed to reset ').$task->title;
-      case 'kill':    // stop the task
+        return ($tasker->stopTask($task, false, true) ? 'Resetting ' : 'Failed to reset ').$task->title;
+      case 'kill':    // stop the task, reset progress and clear the logs
         return ($tasker->stopTask($task, true) ? 'Killed task ' : 'Failed to kill ').$task->title;
       case 'trash':   // delete the task
         return ($tasker->trashTask($task, $params) ? 'Removed task ' : 'Failed to trash ').$task->title;
@@ -186,7 +182,7 @@ class TaskerAdmin extends Process implements Module {
         $ret['result'] = $task->title;
         break;
       case 'restart': // reset progress then start the task
-        $task->progress = 0;
+        $tasker->resetProgress($task);
       case 'start':   // start/continue the task
         $ret['status'] = true;
         $ret['result'] = $tasker->activateTask($task);
@@ -201,25 +197,23 @@ class TaskerAdmin extends Process implements Module {
           $ret['result'] = $res;
         }
         break;
-      case 'reset':   // reset progress and logs before stopping the task
-      // TODO: this is not enough as task_data may contain other things...
-        $task->progress = 0;
-        $task->log_messages = '';
-        $task->save('log_messages');
+      case 'reset':   // reset progress and logs but keep it running
+        $ret['status'] = true;
+        $tasker->stopTask($task, false, true);
+        break;
       case 'suspend': // stop the task but keep progress
         $ret['status'] = true;
         $tasker->stopTask($task);
         break;
-      case 'kill':    // stop the task
+      case 'kill':    // reset progress and stop the task
         $ret['status'] = true;
-        $tasker->stopTask($task, true);
+        $tasker->stopTask($task, true, true);
         break;
       case 'trash':   // delete the task
         $ret['status'] = true;
         $tasker->trashTask($task, $params);
         break;
       default:
-        $ret['status'] = false;
         $ret['result'] = 'Unknown command.';
         echo json_encode($ret);
         exit;
@@ -275,7 +269,9 @@ class TaskerAdmin extends Process implements Module {
       switch($task->task_state) {
       case Tasker::taskWaiting:
         $icon = 'fa-clock-o';
-        $actions = array('start' => 'Start', 'run' => 'Start & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
+        // $icon = 'fa-hourglass';
+        // $icon = 'fa-spinner';
+        $actions = array('start' => 'Execute', 'run' => 'Execute & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
         break;
       case Tasker::taskActive:
         $icon = 'fa-rocket';
@@ -289,15 +285,10 @@ class TaskerAdmin extends Process implements Module {
           // for active tasks
           // - instruct the Javascript code to run the task and query status
           $jsTaskInfo = '<div class="tasker-task" taskId="'.$task->id.'" command="'.$jsCommand.'" repeatTime="10">';
-          $actions = array('run' => 'Run & Monitor', 'suspend' => 'Suspend', 'reset' => 'Stop & reset', 'kill' => 'Kill');
+          $actions = array('run' => 'Execute & Monitor', 'suspend' => 'Suspend', 'reset' => 'Reset', 'kill' => 'Kill');
         }
         // - and display a progress bar
         $jsProgressbar .= '<div><div class="progress-label">Enable Javascript to monitor task progresss.</div></div></div>';
-        break;
-      case Tasker::taskSuspended:
-        $icon = 'fa-hourglass';
-        //$icon = 'fa-spinner';
-        $actions = array('start' => 'Continue', 'run' => 'Continue & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
         break;
       case Tasker::taskFinished:
         $icon = 'fa-check';
@@ -305,7 +296,7 @@ class TaskerAdmin extends Process implements Module {
         break;
       case Tasker::taskKilled:
         $icon = 'fa-hand-stop-o';
-        $actions = array('start' => 'Restart', 'run' => 'Restart & monitor', 'trash' => 'Trash');
+        $actions = array('start' => 'Restart', 'run' => 'Restart & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
         break;
       case Tasker::taskFailed:
         $icon = 'fa-warning';
