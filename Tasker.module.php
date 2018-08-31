@@ -573,12 +573,23 @@ class Tasker extends WireData implements Module {
 
     // set a signal handler to handle stop requests
     $itHandler = function ($signo) use ($task) {
-      $this->messages('Task was killed by user request');
+      $this->messages('Task was suspended by user request.');
       $task->task_state = self::taskWaiting; // the task will be stopped
       return;
     };
     pcntl_signal(SIGTERM, $itHandler);
     pcntl_signal(SIGINT, $itHandler);
+
+    // if we have a timeout value then setup an alarm clock
+    if ($params['timeout'] > 0) {
+      pcntl_signal(SIGALRM, function ($signo) use ($task) {
+        $task->task_state = self::taskWaiting; // the task will be stopped
+        throw new Exception('Time limit expired.');
+      });
+
+      // set a timeout
+      pcntl_alarm($params['timeout'] - time());
+    }
 
     // set a custom PHP error handler for WARNINGS and ERRORS
     set_error_handler(function($errno, $errstr, $errfile, $errline, array $errcontext) use ($task) {
