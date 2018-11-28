@@ -345,8 +345,7 @@ class Tasker extends WireData implements Module {
    */
   public function saveProgress($task, $taskData, $updateState=true, $checkEvents=true) {
     if ($taskData['max_records']) // report progress if max_records is calculated
-      $task->progress = round(100 * $taskData['records_processed'] / $taskData['max_records'], 2);
-    $task->save('progress');
+      $task->setAndSave('progress', round(100 * $taskData['records_processed'] / $taskData['max_records'], 2));
     $task->setAndSave('task_data', json_encode($taskData));
     // store and clear messages
     foreach(wire('notices') as $notice) $task->log_messages .= $notice->text."\n";
