@@ -203,8 +203,7 @@ class Tasker extends WireData implements Module {
       $this->warning("Task '{$task->title}' cannot be activated because one of its dependencies is not met.");
       return false;
     }
-    $task->task_state = self::taskActive;
-    $task->save('task_state');
+    $task->setAndSave('task_state', self::taskActive);
     $this->message("Task '{$task->title}' has been activated.", Notice::debug);
     return true;
   }
@@ -239,15 +238,14 @@ class Tasker extends WireData implements Module {
    */
   public function stopTask(Page $task, $kill = false, $reset = false) {
     if ($kill) {
-      $task->task_state = self::taskKilled;
+      $task->setAndSave('task_state', self::taskKilled);
       // TODO $task->log .= "The task has been terminated by ....\n";
       $this->message("Task '{$task->title}' has been killed.", Notice::debug);
       $reset = 1;
     } else {
-      $task->task_state = self::taskWaiting;
+      $task->setAndSave('task_state', self::taskWaiting);
       $this->message("Task '{$task->title}' has been suspended.", Notice::debug);
     }
-    $task->save('task_state');
     if ($reset) {
       $this->resetProgress($task);
     }
@@ -260,10 +258,9 @@ class Tasker extends WireData implements Module {
    * @param $task ProcessWire Page object of a task
    */
   public function trashTask(Page $task) {
-    $task->task_state = self::taskKilled;
-    $task->save('task_state');
+    $task->setAndSave('task_state', self::taskKilled);
     $task->trash();
-    $this->message("Task '{$task->title}' has been removed.", Notice::debug);
+    $this->message("Task '{$task->title}' has been thrashed.", Notice::debug);
     return true;
   }
 
@@ -293,8 +290,7 @@ class Tasker extends WireData implements Module {
       return false;
     }
 
-    $task->task_data = json_encode($taskData);
-    $task->save('task_data');
+    $task->setAndSave('task_data', json_encode($taskData));
 
     $this->message("Added '{$nextTask->title}' as a follow-up task to '{$task->title}'.", Notice::debug);
     return true;
@@ -327,8 +323,7 @@ class Tasker extends WireData implements Module {
       return false;
     }
 
-    $task->task_data = json_encode($taskData);
-    $task->save('task_data');
+    $task->setAndSave('task_data', json_encode($taskData));
 
     $this->message("Added '{$otherTask->title}' as a follow-up task to '{$task->title}'.", Notice::debug);
     return true;
@@ -352,8 +347,7 @@ class Tasker extends WireData implements Module {
     if ($taskData['max_records']) // report progress if max_records is calculated
       $task->progress = round(100 * $taskData['records_processed'] / $taskData['max_records'], 2);
     $task->save('progress');
-    $task->task_data = json_encode($taskData);
-    $task->save('task_data');
+    $task->setAndSave('task_data', json_encode($taskData));
     // store and clear messages
     foreach(wire('notices') as $notice) $task->log_messages .= $notice->text."\n";
     $task->save('log_messages');
@@ -410,10 +404,8 @@ class Tasker extends WireData implements Module {
     $taskData['max_records'] = 0;
     unset($taskData['milestone']);
     $taskData['task_done'] = 0;
-    $task->progress = 0;
-    $task->save('progress');
-    $task->task_data = json_encode($taskData);
-    $task->save('task_data');
+    $task->setAndSave('progress', 0);
+    $task->setAndSave('task_data', json_encode($taskData));
   }
 
 /***********************************************************************
@@ -541,13 +533,11 @@ class Tasker extends WireData implements Module {
     // before the first execution check the requirements and dependencies
     if (!$taskData['records_processed']) {
       if (!$this->checkTaskRequirements($task, $taskData)) {
-        $task->task_state = self::taskFailed;
-        $task->save('task_state');
+        $task->setAndSave('task_state', self::taskFailed);
         return false;
       }
       if (!$this->checkTaskDependencies($task, $taskData)) {
-        $task->task_state = self::taskWaiting;
-        $task->save('task_state');
+        $task->setAndSave('task_state', self::taskWaiting);
         return false;
       }
     }
@@ -559,14 +549,13 @@ class Tasker extends WireData implements Module {
       $function = $taskData['method'];
     }
 
-    // the the Page object for the task
+    // the Page object for the task
     $page = $this->pages->get($taskData['pageid']);
 
     // note that the task is actually running now
     $this->message("------------ Task '{$task->title}' started/continued at ".date(DATE_RFC2822).' ------------', Notice::debug);
     $this->message("Tasker is executing '{$task->title}' requested by {$params['invoker']}.", Notice::debug);
-    $task->task_running = 1;
-    $task->save('task_running');
+    $task->setAndSave('task_running', 1);
 
     // pass over the task object to the function
     $params['task'] = $task;
@@ -607,13 +596,11 @@ class Tasker extends WireData implements Module {
     // check result status and set task state accordingly
     if ($res === false) {
       $this->message("Task '{$task->title}' failed.", Notice::debug);
-      $task->task_state = self::taskFailed;
-      $task->save('task_state');  // must be saved now
+      $task->setAndSave('task_state', self::taskFailed);
     } else {
       if ($taskData['task_done']) {
         $this->message("Task '{$task->title}' finished.", Notice::debug);
-        $task->task_state = self::taskFinished;
-        $task->save('task_state');  // must be saved now
+        $task->setAndSave('task_state', self::taskFinished);
         if (isset($taskData['next_task'])) {
           // activate the next tasks that are waiting for this one
           $this->activateTaskSet($taskData['next_task']);
@@ -625,8 +612,7 @@ class Tasker extends WireData implements Module {
     $this->saveProgress($task, $taskData, false, false);
 
     // the task is no longer running
-    $task->task_running = 0;
-    $task->save('task_running');
+    $task->setAndSave('task_running', 0);
 
     return $res;
   }
