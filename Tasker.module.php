@@ -598,6 +598,17 @@ class Tasker extends WireData implements Module {
     });
     //}, E_WARNING|E_ERROR);
 
+    // TODO this does not really work.....
+    // set a custom PHP shutdown function for fatal errors
+    // This puffer will be freed on error (to handle memory exhaustion fatal errors)
+    $this->puffermem = str_repeat('?', 1024 * 1024);
+    register_shutdown_function(function() use ($task) {
+      $this->puffermem = null; // free up some memory
+      $task->task_state = self::taskFailed; // the task will be stopped
+      $this->message("{$task->title} encountered a fatal error and it is stopped.");
+      return true;
+    });
+
     // execute the function and capture its output
     ob_start();
     try {
@@ -663,7 +674,7 @@ class Tasker extends WireData implements Module {
     }
 
     if (isset($params['memory_limit'])
-        && memory_get_usage() >= $params['memory_limit']){
+        && memory_get_usage() >= $params['memory_limit'] * 0.8){
       $this->message("Task '{$task->title}' is stopped due to memory limits.", Notice::debug);
       return false;
     }
