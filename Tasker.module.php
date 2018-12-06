@@ -429,11 +429,11 @@ class Tasker extends WireData implements Module {
     $params['memory_limit'] = self::getSafeMemoryLimit();
     $params['invoker'] = 'LazyCron';
 
-    if ($this->config->debug) echo "LazyCron invoking Tasker to execute '{$task->title}'.<br />\n";
+    if ($this->debug) echo "LazyCron invoking Tasker to execute '{$task->title}'.<br />\n";
 
     while (!($task instanceof NullPage) && !$this->executeTaskNow($task, $params)) { // if can't exec this
       // find a next candidate
-      if ($this->config->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.<br />\n";
+      if ($this->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.<br />\n";
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
     }
@@ -463,11 +463,11 @@ class Tasker extends WireData implements Module {
     $params['memory_limit'] = self::getSafeMemoryLimit();
     $params['invoker'] = 'Cron';
 
-    if ($this->config->debug) echo "Cron invoking Tasker to execute '{$task->title}'.\n";
+    if ($this->debug) echo "Cron is invoking Tasker to execute '{$task->title}'.\n";
 
     while (!($task instanceof NullPage) && !$this->executeTaskNow($task, $params)) { // if can't exec this
       // find a next candidate
-      if ($this->config->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.\n";
+      if ($this->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.\n";
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
     }
