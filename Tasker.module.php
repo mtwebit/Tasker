@@ -429,11 +429,11 @@ class Tasker extends WireData implements Module {
     $params['memory_limit'] = self::getSafeMemoryLimit();
     $params['invoker'] = 'LazyCron';
 
-    if ($this->debug) echo "LazyCron invoking Tasker to execute '{$task->title}'.<br />\n";
+    if ($this->config->debug) echo "LazyCron invoking Tasker to execute '{$task->title}'.<br />\n";
 
     while (!($task instanceof NullPage) && !$this->executeTaskNow($task, $params)) { // if can't exec this
       // find a next candidate
-      if ($this->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.<br />\n";
+      if ($this->config->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.<br />\n";
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
     }
@@ -463,11 +463,11 @@ class Tasker extends WireData implements Module {
     $params['memory_limit'] = self::getSafeMemoryLimit();
     $params['invoker'] = 'Cron';
 
-    if ($this->debug) echo "Cron is invoking Tasker to execute '{$task->title}'.\n";
+    if ($this->config->debug) echo "Cron invoking Tasker to execute '{$task->title}'.\n";
 
     while (!($task instanceof NullPage) && !$this->executeTaskNow($task, $params)) { // if can't exec this
       // find a next candidate
-      if ($this->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.\n";
+      if ($this->config->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.\n";
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
     }
@@ -597,6 +597,10 @@ class Tasker extends WireData implements Module {
       return true;
     });
 
+    // turn on/off debugging according to the user's setting
+    $olddebug = $this->config->debug;
+    $this->config->debug = $this->debug;
+
     // execute the function and capture its output
     ob_start();
     try {
@@ -611,8 +615,10 @@ class Tasker extends WireData implements Module {
       // $this->log->save('json', ob_get_contents());
       ob_end_clean();
     }
-    
+
+    // restore the original error handler and debug settings
     restore_error_handler();
+    $this->config->debug = $olddebug;
 
     // check result status and set task state accordingly
     if ($res === false) {
