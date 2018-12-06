@@ -551,6 +551,10 @@ class Tasker extends WireData implements Module {
     // the Page object for the task
     $page = $this->pages->get($taskData['pageid']);
 
+    // turn on/off debugging according to the user's setting
+    $olddebug = $this->config->debug;
+    $this->config->debug = $this->debug;
+
     // note that the task is actually running now
     $this->message("------------ Task '{$task->title}' started/continued at ".date(DATE_RFC2822).' ------------', Notice::debug);
     $this->message("Tasker is executing '{$task->title}' requested by {$params['invoker']}.", Notice::debug);
@@ -597,10 +601,6 @@ class Tasker extends WireData implements Module {
       return true;
     });
 
-    // turn on/off debugging according to the user's setting
-    $olddebug = $this->config->debug;
-    $this->config->debug = $this->debug;
-
     // execute the function and capture its output
     ob_start();
     try {
@@ -616,9 +616,8 @@ class Tasker extends WireData implements Module {
       ob_end_clean();
     }
 
-    // restore the original error handler and debug settings
+    // restore the original error handler
     restore_error_handler();
-    $this->config->debug = $olddebug;
 
     // check result status and set task state accordingly
     if ($res === false) {
@@ -640,6 +639,9 @@ class Tasker extends WireData implements Module {
 
     // the task is no longer running
     $task->setAndSave('task_running', 0);
+
+    // restore the original debug setting
+    $this->config->debug = $olddebug;
 
     return $res;
   }
