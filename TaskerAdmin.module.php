@@ -247,7 +247,7 @@ class TaskerAdmin extends Process implements Module {
    * @param $jsCommand optional command that the Javascript functions will execute over the Tasker API
    * @returns html string to output, '' if no tasks have been found, false on error
    */
-  public function renderTaskList($selector='sort=task_state', $liClass='', $aClass='', $jsCommand='status') {
+  public function renderTaskList($selector='sort=-task_running, sort=task_state', $liClass='', $aClass='', $jsCommand='status') {
     $tasker = wire('modules')->get('Tasker');
     $tasks = $tasker->getTasks($selector);
     if (!count($tasks)) return '<p>No tasks found.</p>';
@@ -281,14 +281,15 @@ class TaskerAdmin extends Process implements Module {
           // - instruct the Javascript code to query task status every 10 seconds
           $jsTaskInfo = '<div class="tasker-task" taskId="'.$task->id.'" command="status" repeatTime="10">';
           $actions = array('run' => 'Monitor execution', 'suspend' => 'Suspend', 'reset' => 'Stop & reset', 'kill' => 'Kill');
+          // - and display a progress bar
+          $jsProgressbar .= '<div><div class="progress-label">Enable Javascript to monitor task progresss.</div></div></div>';
         } else {
-          // for active tasks
-          // - instruct the Javascript code to run the task and query status
-          $jsTaskInfo = '<div class="tasker-task" taskId="'.$task->id.'" command="'.$jsCommand.'" repeatTime="10">';
+          if ($jsCommand == 'run') {  // start the task (using a JS API call) and display a progress bar
+            $jsTaskInfo = '<div class="tasker-task" taskId="'.$task->id.'" command="'.$jsCommand.'" repeatTime="10">';
+            $jsProgressbar .= '<div><div class="progress-label">Enable Javascript to monitor task progresss.</div></div></div>';
+          }
           $actions = array('run' => 'Execute & Monitor', 'suspend' => 'Suspend', 'reset' => 'Reset', 'kill' => 'Kill');
         }
-        // - and display a progress bar
-        $jsProgressbar .= '<div><div class="progress-label">Enable Javascript to monitor task progresss.</div></div></div>';
         break;
       case Tasker::taskFinished:
         $icon = 'fa-check';
