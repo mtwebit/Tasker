@@ -28,3 +28,8 @@
 
 .NoticeMessage { color: green; }
 .NoticeError { color: red; }
+
+.TaskActions { display: none; }
+
+.TaskTitle:hover .TaskActions { display: inline !important; cursor:pointer; }
+

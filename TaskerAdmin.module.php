@@ -271,7 +271,7 @@ class TaskerAdmin extends Process implements Module {
         $icon = 'fa-clock-o';
         // $icon = 'fa-hourglass';
         // $icon = 'fa-spinner';
-        $actions = array('start' => 'Execute', 'run' => 'Execute & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
+        $actions = array('start' => 'Run', 'run' => 'Run & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
         break;
       case Tasker::taskActive:
         $icon = 'fa-rocket';
@@ -287,8 +287,10 @@ class TaskerAdmin extends Process implements Module {
           if ($jsCommand == 'run') {  // start the task (using a JS API call) and display a progress bar
             $jsTaskInfo = '<div class="tasker-task" taskId="'.$task->id.'" command="'.$jsCommand.'" repeatTime="10">';
             $jsProgressbar .= '<div><div class="progress-label">Enable Javascript to monitor task progresss.</div></div></div>';
+          } else {
+            // $jsTaskInfo = '['.$task->progress.'%]';
           }
-          $actions = array('run' => 'Execute & Monitor', 'suspend' => 'Suspend', 'reset' => 'Reset', 'kill' => 'Kill');
+          $actions = array('run' => 'Run & Monitor', 'suspend' => 'Suspend', 'reset' => 'Reset', 'kill' => 'Kill');
         }
         break;
       case Tasker::taskFinished:
@@ -310,8 +312,8 @@ class TaskerAdmin extends Process implements Module {
 
       $out .= $jsTaskInfo.'
           <i class="fa '.$icon.'">'.$taskState.'</i><i class="fa fa-angle-right"></i>
-          <span class="label_title" style="display: inline !important;">'.$task->title.'</span>
-          <ul class="actions" style="display: inline !important;">
+          <span class="TaskTitle" style="display: inline !important;">'.$task->title.'
+          <ul class="actions TaskActions">
             ';
 
       foreach ($actions as $cmd => $title) {
@@ -323,7 +325,7 @@ class TaskerAdmin extends Process implements Module {
         $out .= '<li style="display: inline !important;"'.$liClass.'><a href="'.$task->editUrl().'"'.$aClass.'>Edit</a></li>';
       }
 
-      $out .= "</ul><br />\n{$jsProgressbar}\n";
+      $out .= "</ul></span><br />\n{$jsProgressbar}\n";
     } // foreach tasks
 
     $out .= "</div>\n"; // end Tasker div
