@@ -7,7 +7,7 @@
  * 
  * Provides management interfaces (HTML and REST API) for Tasker.
  * 
- * Copyright 2017 Tamas Meszaros <mt+github@webit.hu>
+ * Copyright 2017 Tamas Meszaros <mt+git@webit.hu>
  * This file licensed under Mozilla Public License v2.0 http://mozilla.org/MPL/2.0/
  */
 
@@ -24,7 +24,6 @@ class TaskerAdmin extends Process implements Module {
     Tasker::taskFailed => 'failed',
   );
 
-
   /**
    * Called only when this module is installed
    * 
@@ -36,8 +35,6 @@ class TaskerAdmin extends Process implements Module {
 
   /**
    * Called only when this module is uninstalled
-   * 
-   * Removes the admin page.
    */
   public function ___uninstall() {
     parent::___uninstall(); // parent deletes the admin page
@@ -45,8 +42,6 @@ class TaskerAdmin extends Process implements Module {
 
   /**
    * Initialization
-   * 
-   * This function attaches a hook for page save and decodes module options.
    */
   public function init() {
     parent::init();
@@ -55,6 +50,13 @@ class TaskerAdmin extends Process implements Module {
     }
     // set admin URL
     $this->adminUrl = wire('config')->urls->admin.'page/tasks/';
+    // make this available for Javascript functions
+    $this->config->js('tasker', [
+        'adminUrl' => $this->adminUrl,
+        'apiUrl' => $this->adminUrl.'api/',
+        'timeout' => 1000*intval(ini_get('max_execution_time'))
+      ]
+    );
   }
 
 /***********************************************************************
@@ -69,7 +71,6 @@ class TaskerAdmin extends Process implements Module {
  **********************************************************************/
   /**
    * Execute the main function for the admin menu interface
-   * 
    */
   public function execute() {
     list ($command, $taskId, $params) = $this->analyzeRequestURI($_SERVER['REQUEST_URI']);
@@ -152,7 +153,7 @@ class TaskerAdmin extends Process implements Module {
       );
 
     list ($command, $taskId, $params) = $this->analyzeRequestURI($_SERVER['REQUEST_URI']);
-    if (!$command || !$taskId) {
+    if (!$command) {
       $ret['result'] = 'Invalid API request: '.$_SERVER['REQUEST_URI'];
       $ret['log'] = $this->getNotices();
       echo json_encode($ret);
@@ -164,13 +165,44 @@ class TaskerAdmin extends Process implements Module {
     // turn on/off debugging according to the user's setting
     $this->config->debug = $tasker->debug;
 
-    $task = $tasker->getTaskById($taskId);
-    if ($task instanceof NullPage) {
+    if ($command == 'create') { // create a new task
+      if (!isset($params['module']) || !($module = wire('modules')->get($params['module']))) {
+        $ret['result'] = 'No valid module name found while creating a new task.';
+        $ret['log'] = $this->getNotices();
+        echo json_encode($ret);
+        exit;
+      }
+      if (!isset($params['function']) || !method_exists($module, $params['function'])) {
+        $ret['result'] = 'Method name is not specified or does not exists @ '.$params['module'].'.';
+        $ret['log'] = $this->getNotices();
+        echo json_encode($ret);
+        exit;
+      }
+      if (!isset($params['pageId']) || !($pageObject = $this->pages->get($params['pageId'])) instanceof Page) {
+        $ret['result'] = 'PageId is invalid or PW page does not exists.';
+        $ret['log'] = $this->getNotices();
+        echo json_encode($ret);
+        exit;
+      }
+      if (!isset($params['title'])) {
+        $ret['result'] = 'Task title is not set.';
+        $ret['log'] = $this->getNotices();
+        echo json_encode($ret);
+        exit;
+      }
+      $task = $tasker->createTask($module, $params['function'], $pageObject, $params['title'], $params);
+      $ret['result'] = 'Task creation failed.'; // default msg, task creation result will be checked later
+      $command = 'status';  // execute a status command on the newly created task
+    } else {
+      $task = $tasker->getTaskById($taskId);
       $ret['result'] = 'No matching task found.';
+    }
+    if ($task == NULL || $task instanceof NullPage) {
       $ret['log'] = $this->getNotices();
       echo json_encode($ret);
       exit;
     }
+    $ret['result'] = '';
 
     // report back some info after before we start the command
     $ret['taskinfo'] = $task->title;
@@ -224,7 +256,7 @@ class TaskerAdmin extends Process implements Module {
     $ret['running'] = $task->task_running;
     $ret['task_state'] = $task->task_state;
     $ret['task_state_info'] = $this->stateInfo[$task->task_state];
-    $ret['log'] .= "\n<ul class=\"NoticeMessages\">\n";
+    $ret['log'] .= "\n<ul class='NoticeMessages'>\n";
     foreach (explode("\n", $task->log_messages) as $msg) {
       $ret['log'] .= "  <li>$msg</li>\n";
     }
@@ -255,9 +287,7 @@ class TaskerAdmin extends Process implements Module {
     // setting up a div field anchor for javascript
     // apiurl points to this module's api endpoint
     // timeout specifies the timeout in ms after which the JS routine will signal an error
-    $out = '
-      <div id="tasker" adminUrl="'.$this->adminUrl.'api/"
-           timeout="'.(1000*intval(ini_get('max_execution_time')))."\">\n";
+    $out = '<div id="tasker">';
 
     // print out info about tasks and commands
     foreach ($tasks as $task) {

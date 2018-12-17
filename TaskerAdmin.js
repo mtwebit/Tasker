@@ -13,8 +13,7 @@ $(document).ready(function() {
 });
 
 function tasker_client() {
-  var tasker = $("#tasker"),
-      adminUrl = tasker.attr("adminurl");
+  tasker = $("#tasker");
 
   // for each active task
   tasker.children('div').each(function() {
@@ -32,8 +31,8 @@ function tasker_client() {
     });
 
     // call the API with the specified command
-    progressLabel.text("Starting up...");
-    performApiCall(adminUrl + '/?cmd=' + command + '&id=' + taskId, statusCallback, progressbar);
+    progressLabel.text("Querying status...");
+    performApiCall(ProcessWire.config.tasker.apiUrl + '/?cmd=' + command + '&id=' + taskId, statusCallback, progressbar);
   });
 
   // callback for HTTP calls
@@ -55,10 +54,10 @@ function tasker_client() {
         // if requested wait a little bit before executing the next task status request
         if (command == 'status' && repeatTime > 0) setTimeout(
           function() {
-            performApiCall(adminUrl + '/?cmd=' + command + '&id=' + taskId, statusCallback, progressbar);
+            performApiCall(ProcessWire.config.tasker.apiUrl + '/?cmd=' + command + '&id=' + taskId, statusCallback, progressbar);
           }, 1000 * Number(repeatTime));
         else {
-          performApiCall(adminUrl + '/?cmd=' + command + '&id=' + taskId, statusCallback, progressbar);
+          performApiCall(ProcessWire.config.tasker.apiUrl + '/?cmd=' + command + '&id=' + taskId, statusCallback, progressbar);
         }
       } else {
         taskdiv.children("i.fa").remove();
@@ -76,7 +75,7 @@ function tasker_client() {
 // perform a HTTP AJAX (JSON) request and handle errors if necessary
 function performApiCall(url, callback, progressbar) {
   var debuglog = $("#tasker").next("div.NoticeMessages"),
-      timeout = $("#tasker").attr('timeout')+15, // add some extra time
+      timeout = ProcessWire.config.tasker.timeout + 15, // add some extra time
       unloading = false;
 
   // signal if the user is leaving the page
