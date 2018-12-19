@@ -294,6 +294,7 @@ class TaskerAdmin extends Process implements Module {
       // default html elements for javascript functions for individual task entries
       $jsTaskInfo = '';
       $jsProgressbar = '';
+      $logSummary = '';
       $taskState = $this->stateInfo[$task->task_state];
       // display info based on the task's state
       switch($task->task_state) {
@@ -322,18 +323,22 @@ class TaskerAdmin extends Process implements Module {
           }
           $actions = array('run' => 'Run & Monitor', 'suspend' => 'Suspend', 'reset' => 'Reset', 'kill' => 'Kill');
         }
+        $logSummary = ' ('.$tasker->getLogSummary($task).')';
         break;
       case Tasker::taskFinished:
         $icon = 'fa-check';
         $actions = array('start' => 'Restart', 'run' => 'Restart & monitor', 'trash' => 'Trash');
+        $logSummary = ' ('.$tasker->getLogSummary($task).')';
         break;
       case Tasker::taskKilled:
         $icon = 'fa-hand-stop-o';
         $actions = array('start' => 'Restart', 'run' => 'Restart & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
+        $logSummary = ' ('.$tasker->getLogSummary($task).')';
         break;
       case Tasker::taskFailed:
         $icon = 'fa-warning';
         $actions = array('start' => 'Restart', 'run' => 'Restart & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
+        $logSummary = ' ('.$tasker->getLogSummary($task).')';
         break;
       default:
         $icon = 'fa-question';
@@ -342,7 +347,7 @@ class TaskerAdmin extends Process implements Module {
 
       $out .= $jsTaskInfo.'
           <i class="fa '.$icon.'">'.$taskState.'</i><i class="fa fa-angle-right"></i>
-          <span class="TaskTitle" style="display: inline !important;">'.$task->title.'
+          <span class="TaskTitle" style="display: inline !important;">'.$task->title.$logSummary.'
           <ul class="actions TaskActions">
             ';
 

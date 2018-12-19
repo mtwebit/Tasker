@@ -407,6 +407,28 @@ class Tasker extends WireData implements Module {
     $task->setAndSave('task_data', json_encode($taskData));
   }
 
+  /**
+   * Get a summary of log messages.
+   * 
+   * @param $task Page object of the task
+   */
+  public function getLogSummary($task, $getErrors = true, $getWarnings = false) {
+    $ret = '';
+    if ($getErrors) {
+      $num = preg_match_all('|ERROR\:|', $task->log_messages);
+      if ($num) $ret .= $num;
+      else $ret .= 'No';
+      $ret .= ' error(s)';
+    }
+    if ($getWarnings) {
+      $num = preg_match_all('|WARNING\:|', $task->log_messages);
+      if ($num) {
+        $ret .= (($ret != '') ? ' and ' : '') . $num.' warning(s)';
+      }
+    }
+    return $ret;
+  }
+
 /***********************************************************************
  * EXECUTING TASKS
  **********************************************************************/
@@ -576,7 +598,7 @@ class Tasker extends WireData implements Module {
     if ($params['timeout'] > 0) {
       pcntl_signal(SIGALRM, function ($signo) use ($task) {
         $task->task_state = self::taskWaiting; // the task will be stopped
-        throw new Exception('Time limit expired.');
+        throw new \Exception('Time limit expired.');
       });
 
       // set a timeout
