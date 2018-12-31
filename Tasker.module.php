@@ -405,6 +405,7 @@ class Tasker extends WireData implements Module {
     $taskData['task_done'] = 0;
     $task->setAndSave('progress', 0);
     $task->setAndSave('task_data', json_encode($taskData));
+    $task->setAndSave('log_messages', '');
   }
 
   /**
