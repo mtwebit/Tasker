@@ -16,7 +16,7 @@ class TaskerAdminConfig extends ModuleConfig {
   public function getDefaults() {
     return array(
       'autoStart' => 0,
-      'enableWebStart' => 1,
+      'enableWebRun' => 1,
       );
   }
 

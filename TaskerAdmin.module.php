@@ -351,7 +351,7 @@ class TaskerAdmin extends Process implements Module {
           <ul class="actions TaskActions">
             ';
 
-      if (!$this->enableWebStart && isset($actions['run']) && !$task->task_running) unset($actions['run']);
+      if (!$this->enableWebRun && isset($actions['run']) && !$task->task_running) unset($actions['run']);
 
       foreach ($actions as $cmd => $title) {
         if ($jsCommand == $cmd) continue; // we're already executing the command, skip its menu element
