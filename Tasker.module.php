@@ -325,7 +325,7 @@ class Tasker extends WireData implements Module {
 
     $task->setAndSave('task_data', json_encode($taskData));
 
-    $this->message("Added '{$otherTask->title}' as a follow-up task to '{$task->title}'.", Notice::debug);
+    $this->message("Added '{$otherTask->title}' as a dependency to '{$task->title}'.", Notice::debug);
     return true;
   }
 
@@ -607,7 +607,7 @@ class Tasker extends WireData implements Module {
 
     // set a custom PHP error handler for WARNINGS and ERRORS
     set_error_handler(function($errno, $errstr, $errfile, $errline, array $errcontext) use ($task) {
-      $this->message("{$task->title} encountered {$errstr}[{$errno}] in {$errfile} at line {$errline}.");
+      $this->message("ERROR: {$errstr}[{$errno}] in {$errfile} at line {$errline}.");
       return true; // bypass PHP error handling for warnings
     });
     //}, E_WARNING|E_ERROR);
@@ -619,7 +619,7 @@ class Tasker extends WireData implements Module {
     register_shutdown_function(function() use ($task) {
       $this->puffermem = null; // free up some memory
       $task->task_state = self::taskFailed; // the task will be stopped
-      $this->message("{$task->title} encountered a fatal error and it is stopped.");
+      $this->message("ERROR: {$task->title} encountered a fatal error and it is stopped.");
       return true;
     });
 
