@@ -293,7 +293,7 @@ class TaskerAdmin extends Process implements Module {
     foreach ($tasks as $task) {
       // default html elements for javascript functions for individual task entries
       $jsTaskInfo = '';
-      $jsProgressbar = '';
+      $jsProgressbar = '<br />';
       $logSummary = '';
       $taskState = $this->stateInfo[$task->task_state];
       // display info based on the task's state
@@ -362,7 +362,7 @@ class TaskerAdmin extends Process implements Module {
         $out .= '<li style="display: inline !important;"'.$liClass.'><a href="'.$task->editUrl().'"'.$aClass.'>Details</a></li>';
       }
 
-      $out .= "</ul></span><br />\n{$jsProgressbar}\n";
+      $out .= "</ul></span>\n{$jsProgressbar}\n";
     } // foreach tasks
 
     $out .= "</div>\n"; // end Tasker div
