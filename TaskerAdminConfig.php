@@ -16,6 +16,7 @@ class TaskerAdminConfig extends ModuleConfig {
   public function getDefaults() {
     return array(
       'autoStart' => 0,
+      'enableWebStart' => 1,
       );
   }
 
@@ -54,6 +55,13 @@ For more information check the module\'s home at https://github.com/mtwebit/Task
     $f->attr('name', 'autoStart');
     $f->label = __('Automatically start an active task');
     $f->description = __('If a task becomes active start it immediately, if possible. Other modules may use this setting to redirect to TaskerAdmin\'s task monitoring page.');
+    $f->columnWidth = 50;
+    $fieldset->add($f);
+
+    $f = $this->modules->get('InputfieldCheckbox');
+    $f->attr('name', 'enableWebRun');
+    $f->label = __('Allow executing tasks using TaskerAdmin\'s Web interface');
+    $f->description = __('TaskerAdmin provides a Web interface to manage tasks. Allow tasks to be executed using this interface.');
     $f->columnWidth = 50;
     $fieldset->add($f);
 
