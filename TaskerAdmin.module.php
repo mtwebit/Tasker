@@ -321,7 +321,7 @@ class TaskerAdmin extends Process implements Module {
           } else {
             // $jsTaskInfo = '['.$task->progress.'%]';
           }
-          $actions = array('run' => 'Run & Monitor', 'suspend' => 'Suspend', 'reset' => 'Reset', 'kill' => 'Kill');
+          $actions = array('run' => 'Run & Monitor', 'suspend' => 'Deactivate', 'reset' => 'Reset', 'kill' => 'Kill');
         }
         $logSummary = ' ('.$tasker->getLogSummary($task).')';
         break;
@@ -351,13 +351,15 @@ class TaskerAdmin extends Process implements Module {
           <ul class="actions TaskActions">
             ';
 
+      if (!$this->enableWebStart && isset($actions['run'])) unset($actions['run']);
+
       foreach ($actions as $cmd => $title) {
         if ($jsCommand == $cmd) continue; // we're already executing the command, skip its menu element
         $out .= '<li style="display: inline !important;"'.$liClass.'><a href="'.$this->adminUrl.'?id='.$task->id.'&cmd='.$cmd.'"'.$aClass.'>'.$title."</a></li>\n";
       }
 
       if ($task->editable()) {
-        $out .= '<li style="display: inline !important;"'.$liClass.'><a href="'.$task->editUrl().'"'.$aClass.'>Edit</a></li>';
+        $out .= '<li style="display: inline !important;"'.$liClass.'><a href="'.$task->editUrl().'"'.$aClass.'>Details</a></li>';
       }
 
       $out .= "</ul></span><br />\n{$jsProgressbar}\n";
