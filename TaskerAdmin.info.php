@@ -7,20 +7,20 @@
  * 
  * Provides management and API interface for Tasker.
  * 
- * Copyright 2017 Tamas Meszaros <mt+github@webit.hu>
+ * Copyright 2017 Tamas Meszaros <mt+git@webit.hu>
  * This file licensed under Mozilla Public License v2.0 http://mozilla.org/MPL/2.0/
  */
 
 $info = array(
   'title' => 'Task Administration',
-  'version' => '0.1.1',
-  'summary' => 'The module provides admin interface for tasker.',
+  'version' => '0.9.1',
+  'summary' => 'The module provides Web UI for task administration.',
   'href' => 'https://github.com/mtwebit/Tasker/',
-  'singular' => true, // contains hooks
+  'singular' => true,
   'autoload' => false,
-  'icon' => 'tasks', // fontawesome icon
+  'icon' => 'tasks',
   'permission' => 'tasker-admin',
-  'page' => array( // we create an admin page for this module
+  'page' => array( // an admin page for this module
     'name' => 'tasks',
     'parent' => '/admin/page/',
     'title' => 'Task management',

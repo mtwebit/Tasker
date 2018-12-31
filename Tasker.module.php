@@ -459,6 +459,7 @@ class Tasker extends WireData implements Module {
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
     }
+    // TODO this dumps nothing if the task has been finished, dump its log messages instead?
     echo '<ul class="NoticeMessages">';
     foreach(wire('notices') as $notice) {
       $text = wire('sanitizer')->entities($notice->text);
@@ -493,6 +494,7 @@ class Tasker extends WireData implements Module {
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
     }
+    // TODO this dumps nothing if the task has been finished, dump its log messages instead?
     foreach(wire('notices') as $notice) {
       echo $notice->text."\n";
     }
