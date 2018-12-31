@@ -323,7 +323,7 @@ class TaskerAdmin extends Process implements Module {
           }
           $actions = array('run' => 'Run & Monitor', 'suspend' => 'Deactivate', 'reset' => 'Reset', 'kill' => 'Kill');
         }
-        $logSummary = ' ('.$tasker->getLogSummary($task).')';
+        if ($jsCommand != 'run') $logSummary = ' ('.$tasker->getLogSummary($task).')';
         break;
       case Tasker::taskFinished:
         $icon = 'fa-check';
