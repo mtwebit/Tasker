@@ -25,6 +25,8 @@ class Tasker extends WireData implements Module {
   // TODO make this configurable
   // memory limit threshold
   const mem_thr = 5*1024*1024;
+  // exception codes
+  const exTimeout = 1;
 
 /***********************************************************************
  * MODULE SETUP
@@ -600,11 +602,10 @@ class Tasker extends WireData implements Module {
     // if we have a timeout value then setup an alarm clock
     if ($params['timeout'] > 0) {
       pcntl_signal(SIGALRM, function ($signo) use ($task) {
-        $task->task_state = self::taskWaiting; // the task will be stopped
-        throw new \Exception('Time limit expired.');
+        $task->task_state = self::taskFailed; // the task will be stopped
+        $this->message('Either the limit is too low (check Tasker config) or the task\'s code does not check the limit properly.');
+        throw new \Exception('time limit expired.', $this->exTimeout);
       });
-
-      // set a timeout
       pcntl_alarm($params['timeout'] - time());
     }
 
@@ -633,11 +634,10 @@ class Tasker extends WireData implements Module {
       ob_end_flush();
     } catch (\Exception $e) {
       $res = false;
-      $this->message($e->getMessage());
+      $this->message('ERROR: ' . $e->getMessage());
       $this->message(ob_get_contents());
-      // TODO logging?
-      // $this->log->save('json', $e->getMessage());
-      // $this->log->save('json', ob_get_contents());
+      $this->message($e->getTraceAsString());
+      // TODO logging to file?
       ob_end_clean();
     }
 
@@ -686,14 +686,17 @@ class Tasker extends WireData implements Module {
     }
 
     // suspend the task if the allowed execution time is over
-    if ($params['timeout'] && $params['timeout'] <= time()) {
-      $this->message("Task '{$task->title}' is stopped due to time limits.", Notice::debug);
+    // TODO try to estimate a single round (now 2 sec is assumed)
+    if ($params['timeout'] && ($params['timeout'] - 2 < time())) {
+      $this->message("Task '{$task->title}' is suspended due to time limits.", Notice::debug);
       return false;
     }
 
+    // suspend the task if the allowed memory limit is reached
+    // TODO try to find a better constant multiplier
     if (isset($params['memory_limit'])
         && memory_get_usage() >= $params['memory_limit'] * 0.8){
-      $this->message("Task '{$task->title}' is stopped due to memory limits.", Notice::debug);
+      $this->message("Task '{$task->title}' is suspended due to memory limits.", Notice::debug);
       return false;
     }
 
