@@ -312,7 +312,7 @@ class TaskerAdmin extends Process implements Module {
           // for running tasks
           // - instruct the Javascript code to query task status every 10 seconds
           $jsTaskInfo = '<div class="tasker-task" taskId="'.$task->id.'" command="status" repeatTime="10">';
-          $actions = array('run' => 'Monitor execution', 'suspend' => 'Suspend', 'reset' => 'Stop & reset', 'kill' => 'Kill');
+          $actions = array('run' => 'Monitor', 'suspend' => 'Suspend', 'reset' => 'Stop & reset', 'kill' => 'Kill');
           // - and display a progress bar
           $jsProgressbar .= '<div><div class="progress-label">Enable Javascript to monitor task progresss.</div></div></div>';
         } else {
