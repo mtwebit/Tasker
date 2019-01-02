@@ -336,8 +336,8 @@ class Tasker extends WireData implements Module {
  * TASK DATA AND PROGRESS MANAGEMENT
  **********************************************************************/
   /**
-   * Save progress and actual task_data.
-   * Save and clear log messages.
+   * Recalculate and save progress.
+   * Save and clear log messages, save task_data.
    * Also check task's state and events if requested.
    * 
    * @param $task Page object of the task
@@ -370,16 +370,16 @@ class Tasker extends WireData implements Module {
   }
 
   /**
-   * Check if a task milestone has been reached and save progress if yes.
-   * Task progress should be saved at certain time points in order to monitor them.
+   * Save the task's progress IF a milestone is reached.
+   * Tasks should call this regularly to allow their monitoring.
    * 
    * @param $task ProcessWire Page object of a task
    * @param $taskData assoc array of task data
    * @param $updateState if true task_state will be updated from the database
    * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
-   * @returns true if milestone is reached
+   * @returns true if milestone is reached (caller should set a new milestone)
    */
-  public function saveProgressAtMilestone(Page $task, $taskData, $params, $updateState=true, $checkEvents=true) {
+  public function saveProgressAtMilestone(Page $task, $taskData, $updateState=true, $checkEvents=true) {
 
     // return if there is no milestone or it is not reached
     if (!isset($taskData['milestone']) || $taskData['milestone'] > $taskData['records_processed'])
@@ -416,17 +416,17 @@ class Tasker extends WireData implements Module {
    * @param $task Page object of the task
    */
   public function getLogSummary($task, $getErrors = true, $getWarnings = false) {
-    $ret = '';
+    $ret = $task->progress . '%';
     if ($getErrors) {
       $num = preg_match_all('|ERROR\:|', $task->log_messages);
-      if ($num) $ret .= $num;
-      else $ret .= 'No';
+      if ($num) $ret .= ' '.$num;
+      else $ret .= ' No';
       $ret .= ' error(s)';
     }
     if ($getWarnings) {
       $num = preg_match_all('|WARNING\:|', $task->log_messages);
       if ($num) {
-        $ret .= (($ret != '') ? ' and ' : '') . $num.' warning(s)';
+        $ret .= ' '.$num.' warning(s)';
       }
     }
     return $ret;
@@ -792,7 +792,7 @@ class Tasker extends WireData implements Module {
   public function checkEvents(Page $task, $taskData) {
     // check for Unix signals
     pcntl_signal_dispatch();
-    // TODO check and handle other events
+    // TODO check and handle other events 
   }
 
   /**

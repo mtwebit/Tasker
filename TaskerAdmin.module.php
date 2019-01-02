@@ -303,6 +303,7 @@ class TaskerAdmin extends Process implements Module {
         // $icon = 'fa-hourglass';
         // $icon = 'fa-spinner';
         $actions = array('start' => 'Run', 'run' => 'Run & monitor', 'reset' => 'Reset', 'trash' => 'Trash');
+        if ($task->progress > 0) $logSummary = ' ('.$tasker->getLogSummary($task).')';
         break;
       case Tasker::taskActive:
         $icon = 'fa-rocket';
