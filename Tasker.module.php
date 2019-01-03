@@ -418,13 +418,13 @@ class Tasker extends WireData implements Module {
   public function getLogSummary($task, $getErrors = true, $getWarnings = false) {
     $ret = $task->progress . '%';
     if ($getErrors) {
-      $num = preg_match_all('|ERROR\:|', $task->log_messages);
+      $num = preg_match_all('|\bERROR[: ]|i', $task->log_messages);
       if ($num) $ret .= ' '.$num;
       else $ret .= ' No';
       $ret .= ' error(s)';
     }
     if ($getWarnings) {
-      $num = preg_match_all('|WARNING\:|', $task->log_messages);
+      $num = preg_match_all('|\bWARNING[: ]|i', $task->log_messages);
       if ($num) {
         $ret .= ' '.$num.' warning(s)';
       }
