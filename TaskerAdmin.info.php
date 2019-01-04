@@ -12,8 +12,8 @@
  */
 
 $info = array(
-  'title' => 'Task Administration',
-  'version' => '0.9.1',
+  'title' => 'Tasker Administration',
+  'version' => '0.9.2',
   'summary' => 'The module provides Web UI for task administration.',
   'href' => 'https://github.com/mtwebit/Tasker/',
   'singular' => true,
@@ -21,9 +21,9 @@ $info = array(
   'icon' => 'tasks',
   'permission' => 'tasker-admin',
   'page' => array( // an admin page for this module
-    'name' => 'tasks',
-    'parent' => '/admin/page/',
-    'title' => 'Task management',
+    'name' => 'tasks-management',
+    'parent' => 'setup',
+    'title' => 'Tasks Management',
     'template' => 'admin'
   ),
 );

@@ -27,6 +27,15 @@ class Tasker extends WireData implements Module {
   const mem_thr = 5*1024*1024;
   // exception codes
   const exTimeout = 1;
+  // name of the task template
+  const templateName = 'tasker-task';
+  const templateFields = array(
+    'tasker_signature', 
+    'tasker_running', 
+    'tasker_progress', 
+    'tasker_state', 
+    'tasker_data'
+  );
 
 /***********************************************************************
  * MODULE SETUP
@@ -38,7 +47,70 @@ class Tasker extends WireData implements Module {
    * Creates new custom database table for storing import configuration data.
    */
   public function ___install() {
-    // TODO create a task template if it does not exists
+    $t = $this->templates->get(self::templateName);
+    $fg = $this->fieldgroups->get(self::templateName);
+
+    if (!is_null($t) && !is_null($fg)) {
+      $this->error("Error creating new template \"{$this->templateName}\".");
+    }
+    else {
+      // fieldgroup
+      $fg = new Fieldgroup();
+      $fg->name = self::templateName;
+    
+      // fields
+      $f = new Field(); 
+      $f->type = $this->modules->get("FieldtypeText");
+      $f->name = 'tasker_signature';
+      $f->save();
+      $fg->add($f);
+
+      $f = new Field();
+      $f->type = $this->modules->get("FieldtypeInteger"); 
+      $f->name = 'tasker_progress';
+      $f->min = '0';
+      $f->max = '100';
+      $f->save(); 
+      $fg->add($f);
+
+      $f = new Field();
+      $f->type = $this->modules->get("FieldtypeInteger");
+      $f->name = 'tasker_running';
+      $f->min = '0';
+      $f->max = '1';
+      $f->save();
+      $fg->add($f);
+
+      $f = new Field();
+      $f->type = $this->modules->get("FieldtypeInteger");
+      $f->name = 'tasker_state';
+      $f->min = '0';
+      $f->max = '1';
+      $f->save();
+      $fg->add($f);
+
+      $f = new Field();
+      $f->type = $this->modules->get("FieldtypeTextarea");
+      $f->name = 'tasker_data';
+      $f->save();
+      $fg->add($f); 
+
+      $fg->add($this->fields->get('title'));
+      foreach ($this->templateFields as $field) {
+        $fg->add($this->fields->get($field));
+      }
+ 
+      $fg->save(); // save fieldgroup
+
+      // new template using the fieldgroup and a template
+      $t = new Template();
+      $t->name = self::templateName;
+      $t->fieldgroup = $fg;
+      $t->save();
+
+      // tell the user we created the fields and template
+      $this->message(sprintf($this->_("Created fields and template \"%s\""), $t->name));
+    }
   }
 
 
@@ -48,7 +120,31 @@ class Tasker extends WireData implements Module {
    * Drops database table created during installation.
    */
   public function ___uninstall() {
-    // TODO delete the task template??
+    $t = $this->templates->get(self::templateName);
+    $fg = $this->fieldgroups->get(self::templateName);
+
+    if(!is_null($t) && !is_null($fg)) {  
+      if($t->getNumPages() > 0) {
+        throw new WireException("Can't uninstall because template is used by some pages.");
+      } else {
+        $this->templates->delete($t);
+
+        $fg->remove($this->fields->get('title'));
+        foreach (self::templateFields as $field) {
+          $fg->remove($this->fields->get($field));
+        }
+        $this->fieldgroups->delete($fg);
+  
+        //delete the fields
+        foreach (self::templateFields as $field) {
+          $f = $this->fields->get($field);
+          $this->fields->delete($f);
+        }
+      
+        // tell the user we removed the fields and template
+        $this->message(sprintf($this->_("Removed fields and template \"%s\""), $t->name));
+      }
+    }
   }
 
   /**
@@ -120,9 +216,9 @@ class Tasker extends WireData implements Module {
         unset($taskData['dep']);
       }
     }
-    $p->task_data = json_encode($taskData);
+    $p->tasker_data = json_encode($taskData);
     // unique signature for the task (used in comparisons)
-    $p->signature = md5($p->task_data); // this should not change (task_data may)
+    $p->tasker_running = md5($p->tasker_data); // this should not change (tasker_data may)
 
     $p->log_messages = '';
 
@@ -130,15 +226,15 @@ class Tasker extends WireData implements Module {
     $p->parent = $page;
     $p->title = $title;
     $p->addStatus(Page::statusHidden);
-    $p->progress = 0;
-    $p->task_state = self::taskWaiting;
-    $p->task_running = 0;
+    $p->tasker_progress = 0;
+    $p->tasker_state = self::taskWaiting;
+    $p->tasker_running = 0;
 
     // suspend this task and warn the user if the same task already exists
-    $op = $page->child("template={$this->taskTemplate},signature={$p->signature},include=hidden");
+    $op = $page->child("template={$this->taskTemplate},tasker_running={$p->tasker_running},include=hidden");
     if (!($op instanceof NullPage)) {
       $this->warning("The same task '{$op->title}' exists for '{$page->title}' and executed by {$moduleName}->{$method}.");
-      $p->task_state = self::taskWaiting;
+      $p->tasker_state = self::taskWaiting;
     }
 
     $p->save();
@@ -149,11 +245,11 @@ class Tasker extends WireData implements Module {
   /**
    * Return tasks matching a selector.
    * 
-   * @param $selector ProcessWire selector except that integer values match task_state
+   * @param $selector ProcessWire selector except that integer values match tasker_state
    * @returns WireArray of tasks
    */
   public function getTasks($selector='') {
-    if (is_integer($selector)) $selector = 'task_state='.$selector;
+    if (is_integer($selector)) $selector = 'tasker_state='.$selector;
     $selector .= ($selector == '' ? 'template='.$this->taskTemplate : ',template='.$this->taskTemplate);
     $selector .= ',include=hidden'; // task pages are hidden by default
     // $this->message($selector, Notice::debug);
@@ -179,7 +275,7 @@ class Tasker extends WireData implements Module {
    * @returns true if they were at the time of their creation :)
    */
   public function checkEqual($task1, $task2) {
-    return $task1->signature == $task2->signature;
+    return $task1->tasker_running == $task2->tasker_running;
   }
 
   /**
@@ -189,7 +285,7 @@ class Tasker extends WireData implements Module {
    * @return false if the task is no longer active
    */
   public function isActive($task) {
-    return ($task->task_state == self::taskActive);
+    return ($task->tasker_state == self::taskActive);
   }
 
   /**
@@ -200,12 +296,12 @@ class Tasker extends WireData implements Module {
    * @returns true on success
    */
   public function activateTask(Page $task) {
-    $taskData = json_decode($task->task_data, true);
+    $taskData = json_decode($task->tasker_data, true);
     if (!$this->checkTaskDependencies($task, $taskData)) {
       $this->warning("Task '{$task->title}' cannot be activated because one of its dependencies is not met.");
       return false;
     }
-    $task->setAndSave('task_state', self::taskActive);
+    $task->setAndSave('tasker_state', self::taskActive);
     $this->message("Task '{$task->title}' has been activated.", Notice::debug);
     return true;
   }
@@ -240,12 +336,12 @@ class Tasker extends WireData implements Module {
    */
   public function stopTask(Page $task, $kill = false, $reset = false) {
     if ($kill) {
-      $task->setAndSave('task_state', self::taskKilled);
+      $task->setAndSave('tasker_state', self::taskKilled);
       // TODO $task->log .= "The task has been terminated by ....\n";
       $this->message("Task '{$task->title}' has been killed.", Notice::debug);
       $reset = 1;
     } else {
-      $task->setAndSave('task_state', self::taskWaiting);
+      $task->setAndSave('tasker_state', self::taskWaiting);
       $this->message("Task '{$task->title}' has been suspended.", Notice::debug);
     }
     if ($reset) {
@@ -260,7 +356,7 @@ class Tasker extends WireData implements Module {
    * @param $task ProcessWire Page object of a task
    */
   public function trashTask(Page $task) {
-    $task->setAndSave('task_state', self::taskKilled);
+    $task->setAndSave('tasker_state', self::taskKilled);
     $task->trash();
     $this->message("Task '{$task->title}' has been thrashed.", Notice::debug);
     return true;
@@ -279,7 +375,7 @@ class Tasker extends WireData implements Module {
       return false;
     }
 
-    $taskData = json_decode($task->task_data, true);
+    $taskData = json_decode($task->tasker_data, true);
     if (!isset($taskData['next_task'])) {
       $taskData['next_task'] = $nextTask->id;
     } else if (is_integer($taskData['next_task'])) {
@@ -292,7 +388,7 @@ class Tasker extends WireData implements Module {
       return false;
     }
 
-    $task->setAndSave('task_data', json_encode($taskData));
+    $task->setAndSave('tasker_data', json_encode($taskData));
 
     $this->message("Added '{$nextTask->title}' as a follow-up task to '{$task->title}'.", Notice::debug);
     return true;
@@ -312,7 +408,7 @@ class Tasker extends WireData implements Module {
       return false;
     }
 
-    $taskData = json_decode($task->task_data, true);
+    $taskData = json_decode($task->tasker_data, true);
     if (!isset($taskData['dep'])) {
       $taskData['dep'] = $otherTask->id;
     } else if (is_integer($taskData['dep'])) {
@@ -325,7 +421,7 @@ class Tasker extends WireData implements Module {
       return false;
     }
 
-    $task->setAndSave('task_data', json_encode($taskData));
+    $task->setAndSave('tasker_data', json_encode($taskData));
 
     $this->message("Added '{$otherTask->title}' as a dependency to '{$task->title}'.", Notice::debug);
     return true;
@@ -336,19 +432,19 @@ class Tasker extends WireData implements Module {
  * TASK DATA AND PROGRESS MANAGEMENT
  **********************************************************************/
   /**
-   * Save progress and actual task_data.
+   * Save progress and actual tasker_data.
    * Save and clear log messages.
    * Also check task's state and events if requested.
    * 
    * @param $task Page object of the task
    * @param $taskData assoc array of task data
-   * @param $updateState if true task_state will be updated from the database
+   * @param $updateState if true tasker_state will be updated from the database
    * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
    */
   public function saveProgress($task, $taskData, $updateState=true, $checkEvents=true) {
     if ($taskData['max_records']) // report progress if max_records is calculated
-      $task->setAndSave('progress', round(100 * $taskData['records_processed'] / $taskData['max_records'], 2));
-    $task->setAndSave('task_data', json_encode($taskData));
+      $task->setAndSave('tasker_progress', round(100 * $taskData['records_processed'] / $taskData['max_records'], 2));
+    $task->setAndSave('tasker_data', json_encode($taskData));
     // store and clear messages
     foreach(wire('notices') as $notice) $task->log_messages .= $notice->text."\n";
     $task->save('log_messages');
@@ -365,7 +461,7 @@ class Tasker extends WireData implements Module {
         'getFromCache' => false, // don't let it read from cache
         'getOne' => true, // return a Page instead of a PageArray
       ));
-      $task->task_state = $task2->task_state;
+      $task->tasker_state = $task2->tasker_state;
     }
   }
 
@@ -375,7 +471,7 @@ class Tasker extends WireData implements Module {
    * 
    * @param $task ProcessWire Page object of a task
    * @param $taskData assoc array of task data
-   * @param $updateState if true task_state will be updated from the database
+   * @param $updateState if true tasker_state will be updated from the database
    * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
    * @returns true if milestone is reached
    */
@@ -399,14 +495,14 @@ class Tasker extends WireData implements Module {
    */
   public function resetProgress($task) {
     // decode the task data into an associative array
-    $taskData = json_decode($task->task_data, true);
+    $taskData = json_decode($task->tasker_data, true);
     // an reinitialize it
     $taskData['records_processed'] = 0;
     $taskData['max_records'] = 0;
     unset($taskData['milestone']);
     $taskData['task_done'] = 0;
-    $task->setAndSave('progress', 0);
-    $task->setAndSave('task_data', json_encode($taskData));
+    $task->setAndSave('tasker_progress', 0);
+    $task->setAndSave('tasker_data', json_encode($taskData));
     $task->setAndSave('log_messages', '');
   }
 
@@ -444,7 +540,7 @@ class Tasker extends WireData implements Module {
    */
   public function executeByLazyCron(HookEvent $e) {
     // find a ready-to-run but not actually running task to execute
-    $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,include=hidden";
+    $selector = "template={$this->taskTemplate},tasker_state=".self::taskActive.",tasker_running=0,include=hidden";
     $task = $this->pages->findOne($selector);
     if ($task instanceof NullPage) return;
 
@@ -479,7 +575,7 @@ class Tasker extends WireData implements Module {
   public function executeByCron() {
     if (!$this->enableCron) return;
     // find a ready-to-run but not actually running task to execute
-    $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,include=hidden";
+    $selector = "template={$this->taskTemplate},tasker_state=".self::taskActive.",tasker_running=0,include=hidden";
     $task = $this->pages->findOne($selector);
     if ($task instanceof NullPage) return; // nothing to do
 
@@ -520,7 +616,7 @@ class Tasker extends WireData implements Module {
     }
 
     // check if the task is already running
-    if ($task->task_running) {
+    if ($task->tasker_running) {
       $this->warning("Task '{$task->title}' is already running. Will not execute again.");
       return false;
     }
@@ -554,16 +650,16 @@ class Tasker extends WireData implements Module {
     if (!$this->allowedToExecute($task, $params)) return;
 
     // decode the task data into an associative array
-    $taskData = json_decode($task->task_data, true);
+    $taskData = json_decode($task->tasker_data, true);
 
     // before the first execution check the requirements and dependencies
     if (!$taskData['records_processed']) {
       if (!$this->checkTaskRequirements($task, $taskData)) {
-        $task->setAndSave('task_state', self::taskFailed);
+        $task->setAndSave('tasker_state', self::taskFailed);
         return false;
       }
       if (!$this->checkTaskDependencies($task, $taskData)) {
-        $task->setAndSave('task_state', self::taskWaiting);
+        $task->setAndSave('tasker_state', self::taskWaiting);
         return false;
       }
     }
@@ -585,7 +681,7 @@ class Tasker extends WireData implements Module {
     // note that the task is actually running now
     $this->message("------------ Task '{$task->title}' started/continued at ".date(DATE_RFC2822).' ------------', Notice::debug);
     $this->message("Tasker is executing '{$task->title}' requested by {$params['invoker']}.", Notice::debug);
-    $task->setAndSave('task_running', 1);
+    $task->setAndSave('tasker_running', 1);
 
     // pass over the task object to the function
     $params['task'] = $task;
@@ -593,7 +689,7 @@ class Tasker extends WireData implements Module {
     // set a signal handler to handle stop requests
     $itHandler = function ($signo) use ($task) {
       $this->messages('Task was suspended by user request.');
-      $task->task_state = self::taskWaiting; // the task will be stopped
+      $task->tasker_state = self::taskWaiting; // the task will be stopped
       return;
     };
     pcntl_signal(SIGTERM, $itHandler);
@@ -602,7 +698,7 @@ class Tasker extends WireData implements Module {
     // if we have a timeout value then setup an alarm clock
     if ($params['timeout'] > 0) {
       pcntl_signal(SIGALRM, function ($signo) use ($task) {
-        $task->task_state = self::taskFailed; // the task will be stopped
+        $task->tasker_state = self::taskFailed; // the task will be stopped
         $this->message('Either the limit is too low (check Tasker config) or the task\'s code does not check the limit properly.');
         throw new \Exception('time limit expired.', $this->exTimeout);
       });
@@ -622,7 +718,7 @@ class Tasker extends WireData implements Module {
     $this->puffermem = str_repeat('?', 1024 * 1024);
     register_shutdown_function(function() use ($task) {
       $this->puffermem = null; // free up some memory
-      $task->task_state = self::taskFailed; // the task will be stopped
+      $task->tasker_state = self::taskFailed; // the task will be stopped
       $this->message("ERROR: {$task->title} encountered a fatal error and it is stopped.");
       return true;
     });
@@ -647,11 +743,11 @@ class Tasker extends WireData implements Module {
     // check result status and set task state accordingly
     if ($res === false) {
       $this->message("Task '{$task->title}' failed.", Notice::debug);
-      $task->setAndSave('task_state', self::taskFailed);
+      $task->setAndSave('tasker_state', self::taskFailed);
     } else {
       if ($taskData['task_done']) {
         $this->message("Task '{$task->title}' finished.", Notice::debug);
-        $task->setAndSave('task_state', self::taskFinished);
+        $task->setAndSave('tasker_state', self::taskFinished);
         if (isset($taskData['next_task'])) {
           // activate the next tasks that are waiting for this one
           $this->activateTaskSet($taskData['next_task']);
@@ -663,7 +759,7 @@ class Tasker extends WireData implements Module {
     $this->saveProgress($task, $taskData, false, false);
 
     // the task is no longer running
-    $task->setAndSave('task_running', 0);
+    $task->setAndSave('tasker_running', 0);
 
     // restore the original debug setting
     $this->config->debug = $olddebug;
@@ -762,7 +858,7 @@ class Tasker extends WireData implements Module {
     // may depend on a single task
     if (is_numeric($taskData['dep'])) {
       $depTask = $this->getTaskById($taskData['dep']);
-      if ($depTask->id!=0 && !$depTask->isTrash() && ($depTask->task_state != self::taskFinished)) {
+      if ($depTask->id!=0 && !$depTask->isTrash() && ($depTask->tasker_state != self::taskFinished)) {
         $this->message("'{$task->title}' is waiting for '{$depTask->title}' to finish.", Notice::debug);
         return false;
       }
@@ -772,7 +868,7 @@ class Tasker extends WireData implements Module {
     $ret = true;
     if (is_array($taskData['dep'])) foreach ($taskData['dep'] as $taskId) {
       $depTask = $this->getTask($taskId);
-      if ($depTask->id!=0 && !$depTask->isTrash() && ($depTask->task_state != self::taskFinished)) {
+      if ($depTask->id!=0 && !$depTask->isTrash() && ($depTask->tasker_state != self::taskFinished)) {
         $this->message("'{$task->title}' is waiting for '{$depTask->title}' to finish.", Notice::debug);
         $ret = false;
       }

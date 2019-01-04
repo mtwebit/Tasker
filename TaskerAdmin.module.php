@@ -14,6 +14,9 @@
 class TaskerAdmin extends Process implements Module {
   // the base URL of the module's admin page
   public $adminUrl;
+  // The name that will be used for the page this module creates
+  public const pageName = 'tasks-management';
+  const pageTitle = 'Tasks Management';
   // human-readable task descriptions
   public $stateInfo = array(
     Tasker::taskUnknown => 'unknown',
@@ -49,7 +52,8 @@ class TaskerAdmin extends Process implements Module {
       $this->error('Tasker module is missing.');
     }
     // set admin URL
-    $this->adminUrl = wire('config')->urls->admin.'page/tasks/';
+    $processUrl = $this->pages->findOne('name='. self::pageName .', template=admin');
+    $this->adminUrl = $processUrl->url;
     // make this available for Javascript functions
     $this->config->js('tasker', [
         'adminUrl' => $this->adminUrl,
@@ -218,7 +222,7 @@ class TaskerAdmin extends Process implements Module {
       case 'start':   // start/continue the task
         $ret['status'] = true;
         $ret['result'] = $tasker->activateTask($task);
-        $ret['running'] = $task->task_running;
+        $ret['running'] = $task->tasker_running;
         break;
       case 'run':     // execute the task
       case 'exec':    // execute the task
@@ -252,10 +256,10 @@ class TaskerAdmin extends Process implements Module {
     }
 
     // report back some info after the command has finished
-    $ret['progress'] = $task->progress;
-    $ret['running'] = $task->task_running;
-    $ret['task_state'] = $task->task_state;
-    $ret['task_state_info'] = $this->stateInfo[$task->task_state];
+    $ret['progress'] = $task->tasker_progress;
+    $ret['running'] = $task->tasker_running;
+    $ret['task_state'] = $task->tasker_state;
+    $ret['task_state_info'] = $this->stateInfo[$task->tasker_state];
     $ret['log'] .= "\n<ul class='NoticeMessages'>\n";
     foreach (explode("\n", $task->log_messages) as $msg) {
       $ret['log'] .= "  <li>$msg</li>\n";
@@ -295,9 +299,9 @@ class TaskerAdmin extends Process implements Module {
       $jsTaskInfo = '';
       $jsProgressbar = '<br />';
       $logSummary = '';
-      $taskState = $this->stateInfo[$task->task_state];
+      $taskState = $this->stateInfo[$task->tasker_state];
       // display info based on the task's state
-      switch($task->task_state) {
+      switch($task->tasker_state) {
       case Tasker::taskWaiting:
         $icon = 'fa-clock-o';
         // $icon = 'fa-hourglass';
@@ -306,7 +310,7 @@ class TaskerAdmin extends Process implements Module {
         break;
       case Tasker::taskActive:
         $icon = 'fa-rocket';
-        if ($task->task_running) {
+        if ($task->tasker_running) {
           $taskState = 'running';
           // for running tasks
           // - instruct the Javascript code to query task status every 10 seconds
@@ -351,7 +355,7 @@ class TaskerAdmin extends Process implements Module {
           <ul class="actions TaskActions">
             ';
 
-      if (!$this->enableWebRun && isset($actions['run']) && !$task->task_running) unset($actions['run']);
+      if (!$this->enableWebRun && isset($actions['run']) && !$task->tasker_running) unset($actions['run']);
 
       foreach ($actions as $cmd => $title) {
         if ($jsCommand == $cmd) continue; // we're already executing the command, skip its menu element

@@ -31,18 +31,13 @@ class TaskerAdminConfig extends ModuleConfig {
     $f = $this->modules->get('InputfieldMarkup');
     $f->label = __('About the module');
     $f->columnWidth = 50;
-    $f->value = __('<p>
-This module provides an admin interface and a backend API for Tasker.
-For more information check the module\'s home at https://github.com/mtwebit/Tasker/
-</p>');
+    $f->description = __("This module provides an admin interface and a backend API for Tasker. For more information check the module's home at [Github](https://github.com/mtwebit/Tasker/).");
     $fieldset->add($f);
 
     $f = $this->modules->get('InputfieldMarkup');
     $f->label = __('Usage tips');
     $f->columnWidth = 50;
-    $f->value = '<p>
-- if autoStart is enabled, page saves may redirect to TaskerAdmin if a task has been started.<br />
-</p>';
+    $f->description = __("If **AutoStart** is **enabled**, page saves may redirect to TaskerAdmin **if a task has been started**.");
     $fieldset->add($f);
 
     $inputfields->add($fieldset);

@@ -36,18 +36,13 @@ class TaskerConfig extends ModuleConfig {
     $f = $this->modules->get('InputfieldMarkup');
     $f->label = __('About the module');
     $f->columnWidth = 50;
-    $f->value = __('<p>
-This module provides support for execution of long-running tasks.
-For more information check the module\'s home at https://github.com/mtwebit/Tasker/
-</p>');
+    $f->description = __("This module provides support for execution of long-running tasks. For more information check the module's home at [Github](https://github.com/mtwebit/Tasker/).");
     $fieldset->add($f);
 
     $f = $this->modules->get('InputfieldMarkup');
     $f->label = __('Usage tips');
     $f->columnWidth = 50;
-    $f->value = '<p>
-- <br />
-</p>';
+    $f->description = '-';
     $fieldset->add($f);
 
     $inputfields->add($fieldset);
@@ -99,12 +94,12 @@ For more information check the module\'s home at https://github.com/mtwebit/Task
     $f = $this->modules->get('InputfieldSelect');
     $f->attr('name', 'taskTemplate');
     $f->label = __('Task template');
-    $f->description = __('Required fields: task_running, task_data, task_state, ...');
+    $f->description = __('Required fields: tasker_running, tasker_data, tasker_state, ...');
     $f->options = array();
     $f->required = true;
     $f->columnWidth = 50;
     foreach($this->wire('templates') as $template) {
-      if ($template->hasField('task_data')) {
+      if ($template->hasField('tasker_data')) {
         $f->addOption($template->name, $template->name);
       }
     }
