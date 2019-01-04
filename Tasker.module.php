@@ -475,7 +475,7 @@ class Tasker extends WireData implements Module {
    * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
    * @returns true if milestone is reached
    */
-  public function saveProgressAtMilestone(Page $task, $taskData, $params, $updateState=true, $checkEvents=true) {
+  public function saveProgressAtMilestone(Page $task, $taskData, $params = array(), $updateState=true, $checkEvents=true) {
 
     // return if there is no milestone or it is not reached
     if (!isset($taskData['milestone']) || $taskData['milestone'] > $taskData['records_processed'])
