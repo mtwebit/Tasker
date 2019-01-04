@@ -218,7 +218,7 @@ class Tasker extends WireData implements Module {
     }
     $p->tasker_data = json_encode($taskData);
     // unique signature for the task (used in comparisons)
-    $p->tasker_running = md5($p->tasker_data); // this should not change (tasker_data may)
+    $p->tasker_signature = md5($p->tasker_data); // this should not change (tasker_data may)
 
     $p->log_messages = '';
 
