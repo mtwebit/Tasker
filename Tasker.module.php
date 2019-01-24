@@ -627,6 +627,10 @@ class Tasker extends WireData implements Module {
       return true;
     });
 
+    // instruct trackException() to re-throw exceptions
+    $oldAllowExceptions = $this->config->allowExceptions;
+    $this->config->allowExceptions = true;
+
     // execute the function and capture its output
     ob_start();
     try {
@@ -640,6 +644,9 @@ class Tasker extends WireData implements Module {
       // TODO logging to file?
       ob_end_clean();
     }
+
+    // restore old exception config
+    $this->config->allowExceptions = $oldAllowExceptions;
 
     // restore the original error handler
     restore_error_handler();
