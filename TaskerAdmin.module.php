@@ -279,7 +279,7 @@ class TaskerAdmin extends Process implements Module {
    * @param $jsCommand optional command that the Javascript functions will execute over the Tasker API
    * @returns html string to output, '' if no tasks have been found, false on error
    */
-  public function renderTaskList($selector='sort=-task_running, sort=task_state', $liClass='', $aClass='', $jsCommand='status') {
+  public function renderTaskList($selector='sort=-task_running, sort=task_state, sort=-created', $liClass='', $aClass='', $jsCommand='status') {
     $tasker = wire('modules')->get('Tasker');
     $tasks = $tasker->getTasks($selector);
     if (!count($tasks)) return '<p>No tasks found.</p>';
