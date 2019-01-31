@@ -416,20 +416,22 @@ class Tasker extends WireData implements Module {
    * @param $task Page object of the task
    */
   public function getLogSummary($task, $getErrors = true, $getWarnings = false) {
-    $ret = $task->progress . '%';
+    if (isset($task->progress) && $task->progress) $ret = $task->progress . '%';
+    else $ret = '';
     if ($getErrors) {
       $num = preg_match_all('|\bERROR[: ]|i', $task->log_messages);
       if ($num) $ret .= ' '.$num;
       else $ret .= ' No';
       $ret .= ' error(s)';
     }
+    $ret = ltrim($ret);
     if ($getWarnings) {
       $num = preg_match_all('|\bWARNING[: ]|i', $task->log_messages);
       if ($num) {
         $ret .= ' '.$num.' warning(s)';
       }
     }
-    return $ret;
+    return ltrim($ret);
   }
 
 /***********************************************************************
