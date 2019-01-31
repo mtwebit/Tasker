@@ -195,16 +195,16 @@ class TaskerAdmin extends Process implements Module {
       $command = 'status';  // execute a status command on the newly created task
     } else {
       $task = $tasker->getTaskById($taskId);
-      $ret['result'] = 'No matching task found.';
+      $ret['result'] = 'No matching task found.';   // default msg, task's presence will be checked in the next if
     }
     if ($task == NULL || $task instanceof NullPage) {
       $ret['log'] = $this->getNotices();
       echo json_encode($ret);
       exit;
     }
-    $ret['result'] = '';
+    $ret['result'] = '';  // clear the default error msg
 
-    // report back some info after before we start the command
+    // report back some info before we start the command
     $ret['taskinfo'] = $task->title;
     $ret['taskid'] = $task->id;
 
