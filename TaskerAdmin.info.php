@@ -19,7 +19,6 @@ $info = array(
   'singular' => true,
   'autoload' => false,
   'icon' => 'tasks',
-  'permission' => 'tasker-admin',
   'page' => array( // an admin page for this module
     'name' => 'tasks',
     'parent' => '/admin/page/',
