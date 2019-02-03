@@ -7,7 +7,7 @@ It provides a simple interface to create tasks (stored as PW pages), to set and 
 The TaskerAdmin module provides a Javascript-based frontend to list tasks, to change their state and to monitor task progress (using a JQuery progressbar and a debug log area). It also allows the on-line execution of tasks using periodic HTTP calls performed by frontend Javascript code.
 
 ## How does it work
-See the Wiki
+See the [Wiki](https://github.com/mtwebit/Tasker/wiki)
 
 ## Installation
 Tasker requires a Task template type to store task data.  
