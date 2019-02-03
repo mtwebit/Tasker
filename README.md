@@ -16,4 +16,6 @@ These fields will be automagically managed by Tasker.
 
 ## Examples
 The [DataSet](https://github.com/mtwebit/DataSet/) module performs long-running page imports and deletions using Tasker.  
-Check createTasksOnPageSave(), import() and purge() for more details.
+Check createTasksOnPageSave(), import() and purge() for more details.  
+  
+The [MarkupPdfPager](https://github.com/mtwebit/MarkupPdfPager) module performs pdf transformations and indexing using Tasker.
