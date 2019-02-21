@@ -123,7 +123,7 @@ class TaskerAdmin extends Process implements Module {
     }
 
     // start the task (set status to Active)
-    $tasker->activateTask($task, $params);
+    $tasker->activateTask($task);
 
     $out = '<h2>Executing and monitoring task: '.$task->title.'</h2>';
     $out .= $this->renderTaskList('id='.$task->id, '', '', $command);
