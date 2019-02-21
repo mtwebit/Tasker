@@ -197,12 +197,17 @@ class Tasker extends WireData implements Module {
    * The task will be executed by the executeTask() method later on.
    * 
    * @param $task ProcessWire Page object of a task
+   * @param $activateAnyway activate the task no matter its status (Finished, Failed etc.)
    * @returns true on success
    */
-  public function activateTask(Page $task) {
+  public function activateTask(Page $task, $activateAnyway = true) {
     $taskData = json_decode($task->task_data, true);
     if (!$this->checkTaskDependencies($task, $taskData)) {
       $this->warning("Task '{$task->title}' cannot be activated because one of its dependencies is not met.");
+      return false;
+    }
+    if (!$activateAnyway && $task->task_state != self::taskWaiting) {
+      $this->warning("Task '{$task->title}' cannot be activated because it is not ready to run.");
       return false;
     }
     $task->setAndSave('task_state', self::taskActive);
@@ -214,18 +219,19 @@ class Tasker extends WireData implements Module {
    * Activate a set of tasks (set them to ready to run state).
    * 
    * @param $taskSet Page, Page ID or array of Pages/IDs
+   * @param $activateAnyway activate the task no matter its status (Finished, Failed etc.)
    * @returns true on success
    */
-  public function activateTaskSet($taskSet) {
-    if ($taskSet instanceof Page) return $this->activateTask($taskSet);
-    if (is_integer($taskSet)) return $this->activateTask($this->getTaskById($taskSet));
+  public function activateTaskSet($taskSet, $activateAnyway = true) {
+    if ($taskSet instanceof Page) return $this->activateTask($taskSet, $activateAnyway);
+    if (is_integer($taskSet)) return $this->activateTask($this->getTaskById($taskSet), $activateAnyway);
     if (!is_array($taskSet)) {
       $this->error('Invalid arguments provided to activateTaskSet().');
       return false;
     }
     $ret = true;
     foreach ($taskSet as $task) {
-      $ret &= $this->activateTaskSet($task);
+      $ret &= $this->activateTaskSet($task, $activateAnyway);
     }
     return $ret;
   }
@@ -494,7 +500,8 @@ class Tasker extends WireData implements Module {
     if ($this->config->debug) echo "Cron invoking Tasker to execute '{$task->title}'.\n";
 
     while (!($task instanceof NullPage) && !$this->executeTaskNow($task, $params)) { // if can't exec this
-      // find a next candidate
+      // find a next candidate if cron is still enabled
+      if (!$this->enableCron) return;
       if ($this->config->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.\n";
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
@@ -551,6 +558,7 @@ class Tasker extends WireData implements Module {
    * 
    * @param $task ProcessWire Page object of a task
    * @param $params runtime parameters for task execution
+   * @returns false on exec error
    */
   private function executeTaskNow(Page $task, $params) {
     if (!$this->allowedToExecute($task, $params)) return;
@@ -596,7 +604,7 @@ class Tasker extends WireData implements Module {
     $itHandler = function ($signo) use ($task) {
       $this->messages('Task was suspended by user request.');
       $task->task_state = self::taskWaiting; // the task will be stopped
-      return;
+      return true;
     };
     pcntl_signal(SIGTERM, $itHandler);
     pcntl_signal(SIGINT, $itHandler);
@@ -663,7 +671,7 @@ class Tasker extends WireData implements Module {
         $task->setAndSave('task_state', self::taskFinished);
         if (isset($taskData['next_task'])) {
           // activate the next tasks that are waiting for this one
-          $this->activateTaskSet($taskData['next_task']);
+          $this->activateTaskSet($taskData['next_task'], false /* don't activate if it is already finished */);
         }
       }
     }
