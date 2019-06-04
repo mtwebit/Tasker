@@ -103,7 +103,7 @@ class Tasker extends WireData implements Module {
     $taskData['pageid'] = $page->id;
     // set initial number of processed and maximum records
     $taskData['records_processed'] = 0;
-    $taskData['max_records'] = 0;
+    if (!isset($taskData['max_records'])) $taskData['max_records'] = 0;
     // set task status
     $taskData['task_done'] = 0;
     // check and adjust dependencies
@@ -408,7 +408,6 @@ class Tasker extends WireData implements Module {
     $taskData = json_decode($task->task_data, true);
     // an reinitialize it
     $taskData['records_processed'] = 0;
-    $taskData['max_records'] = 0;
     unset($taskData['milestone']);
     $taskData['task_done'] = 0;
     $task->setAndSave('progress', 0);
@@ -493,7 +492,7 @@ class Tasker extends WireData implements Module {
 
     // set up runtime parameters
     $params = array();
-    $params['timeout'] = 0;
+    $params['timeout'] = 0; // TODO: mysql wait_timeout should be taken into consideration here
     $params['memory_limit'] = self::getSafeMemoryLimit();
     $params['invoker'] = 'Cron';
 
@@ -507,9 +506,7 @@ class Tasker extends WireData implements Module {
       $task = $this->pages->findOne($selector);
     }
     // TODO this dumps nothing if the task has been finished, dump its log messages instead?
-    foreach(wire('notices') as $notice) {
-      echo $notice->text."\n";
-    }
+    echo $task->log_messages."\n";
   }
 
 
