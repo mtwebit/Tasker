@@ -450,6 +450,8 @@ class Tasker extends WireData implements Module {
    * @param $e HookEvent
    */
   public function executeByLazyCron(HookEvent $e) {
+    if ($this->pages->count("template={$this->taskTemplate},task_running=1,include=hidden")>2) return;
+
     // find a ready-to-run but not actually running task to execute
     $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,include=hidden";
     $task = $this->pages->findOne($selector);
@@ -485,6 +487,8 @@ class Tasker extends WireData implements Module {
    */
   public function executeByCron() {
     if (!$this->enableCron) return;
+    // Limit the number of running tasks. TODO make this configurable
+    if ($this->pages->count("template={$this->taskTemplate},task_running=1,include=hidden")>2) return;
     // find a ready-to-run but not actually running task to execute
     $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,include=hidden";
     $task = $this->pages->findOne($selector);
@@ -492,7 +496,7 @@ class Tasker extends WireData implements Module {
 
     // set up runtime parameters
     $params = array();
-    $params['timeout'] = 0; // TODO: mysql wait_timeout should be taken into consideration here
+    $params['timeout'] = $this->startTime + 18000; // TODO: better handle mysql wait_timeout
     $params['memory_limit'] = self::getSafeMemoryLimit();
     $params['invoker'] = 'Cron';
 
