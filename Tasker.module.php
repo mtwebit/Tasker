@@ -38,7 +38,108 @@ class Tasker extends WireData implements Module {
    * Creates new custom database table for storing import configuration data.
    */
   public function ___install() {
-    // TODO create a task template if it does not exists
+    // add the fieldgroup
+    $fg = $this->fieldgroups->get('tasker-fieldgroup');
+    if (!@$fg->id) {
+      $fg = new Fieldgroup();
+      $fg->name = 'tasker-fieldgroup';
+    }
+
+    // create and add required fields
+    $field = $this->fields->get('title');
+    if (!@$field->id) {
+      $field = new Field();
+      $field->type = $this->modules->get("FieldtypePageTitle");
+      $field->name = "title";
+      $field->label = "Title";
+      $field->tags = 'Tasker';
+      $field->save();
+      $fg->add($field);
+      $fg->add($field);
+    }
+
+    $field = $this->fields->get('task_data');
+    if (!@$field->id) {
+      $field = new Field();
+      $field->type = $this->modules->get("FieldtypeTextarea");
+      $field->name = "task_data";
+      $field->label = "Task data";
+      $field->tags = 'Tasker';
+      $field->save();
+    }
+
+    $field = $this->fields->get('task_state');
+    if (!@$field->id) {
+      $field = new Field();
+      $field->type = $this->modules->get("FieldtypeInteger");
+      $field->name = "task_state";
+      $field->label = "Task state";
+      $field->inputType = "number";
+      $field->min = "0";
+      $field->max = "10";
+      $field->tags = 'Tasker';
+      $field->save();
+      $fg->add($field);
+    }
+
+    $field = $this->fields->get('task_running');
+    if (!@$field->id) {
+      $field = new Field();
+      $field->type = $this->modules->get("FieldtypeInteger");
+      $field->name = "task_running";
+      $field->label = "Is this task running?";
+      $field->inputType = "number";
+      $field->min = "0";
+      $field->max = "1";
+      $field->tags = 'Tasker';
+      $field->save();
+      $fg->add($field);
+    }
+
+    $field = $this->fields->get('progress');
+    if (!@$field->id) {
+      $field = new Field();
+      $field->type = $this->modules->get("FieldtypeInteger");
+      $field->name = "progress";
+      $field->label = "Progress (in %)";
+      $field->inputType = "number";
+      $field->min = "0";
+      $field->max = "100";
+      $field->tags = 'Tasker';
+      $field->save();
+      $fg->add($field);
+    }
+
+    $field = $this->fields->get('signature');
+    if (!@$field->id) {
+      $field = new Field();
+      $field->type = $this->modules->get("FieldtypeText");
+      $field->name = "signature";
+      $field->label = "Signature";
+      $field->save();
+    }
+
+    $field = $this->fields->get('log_messages');
+    if (!@$field->id) {
+      $field = new Field();
+      $field->type = $this->modules->get("FieldtypeTextarea");
+      $field->name = "log_messages";
+      $field->label = "Log messages";
+      $field->save();
+    }
+
+    // save the fieldgroup
+    $fg->save();
+
+    // add a new template using the fieldgroup
+    $t = $this->templates->get('Task');
+    if (!$t->id){
+      $t = new Template();
+      $t->name = 'Task';//Used different name other than file name
+      $t->noLang = true;
+      $t->fieldgroup = $fg; // add the field group
+      $t->save();
+    }
   }
 
 
