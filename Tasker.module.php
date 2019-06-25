@@ -488,7 +488,7 @@ class Tasker extends WireData implements Module {
   public function executeByCron() {
     if (!$this->enableCron) return;
     // Limit the number of running tasks. TODO make this configurable
-    if ($this->pages->count("template={$this->taskTemplate},task_running=1,include=hidden")>2) return;
+    if ($this->pages->count("template={$this->taskTemplate},task_running=1,include=hidden")>3) return;
     // find a ready-to-run but not actually running task to execute
     $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,include=hidden";
     $task = $this->pages->findOne($selector);
