@@ -27,6 +27,16 @@ class Tasker extends WireData implements Module {
   const mem_thr = 5*1024*1024;
   // exception codes
   const exTimeout = 1;
+  // Tasker template fields
+  private $myFields = array(
+    'title' => array('type' => 'FieldtypePageTitle', 'Label' => 'Title'),
+    'task_data' => array('type' => 'FieldtypeTextarea', 'Label' => 'Task data'),
+    'task_state' => array('type' => 'FieldtypeInteger', 'Label' => 'Task state', 'min' => '0', 'max' => '10'),
+    'task_running' => array('type' => 'FieldtypeInteger', 'Label' => 'Task is running', 'min' => '0', 'max' => '1'),
+    'progress' => array('type' => 'FieldtypeInteger', 'Label' => 'Progress [%]', 'min' => '0', 'max' => '100'),
+    'signature' => array('type' => 'FieldtypeText', 'Label' => 'Signature'),
+    'log_messages' => array('type' => 'FieldtypeTextarea', 'Label' => 'Log messages')
+  );
 
 /***********************************************************************
  * MODULE SETUP
@@ -38,108 +48,52 @@ class Tasker extends WireData implements Module {
    * Creates new custom database table for storing import configuration data.
    */
   public function ___install() {
-    // add the fieldgroup
+    // check / add fieldgroup
     $fg = $this->fieldgroups->get('tasker-fieldgroup');
     if (!@$fg->id) {
       $fg = new Fieldgroup();
       $fg->name = 'tasker-fieldgroup';
-    }
-
-    // create and add required fields
-    $field = $this->fields->get('title');
-    if (!@$field->id) {
-      $field = new Field();
-      $field->type = $this->modules->get("FieldtypePageTitle");
-      $field->name = "title";
-      $field->label = "Title";
+      $fg->add($this->fields->get('title'));
+      $fg->add($this->fields->get('body'));
       $field->tags = 'Tasker';
-      $field->save();
-      $fg->add($field);
-      $fg->add($field);
+      $fg->save();
     }
 
-    $field = $this->fields->get('task_data');
-    if (!@$field->id) {
-      $field = new Field();
-      $field->type = $this->modules->get("FieldtypeTextarea");
-      $field->name = "task_data";
-      $field->label = "Task data";
-      $field->tags = 'Tasker';
-      $field->save();
+    // check / add template
+    $t = $this->templates->get('tasker_task');
+    if (!$t) {
+      $t = new Template();
+      $t->name = 'tasker_task';
+      $t->label = 'Tasker task';
+      $t->tags = 'Tasker';
+      $t->noLang = true;
+      $t->fieldgroup = $fg; // set the field group
+      $t->noChildren = 1;
+      $t->save();
     }
 
-    $field = $this->fields->get('task_state');
-    if (!@$field->id) {
-      $field = new Field();
-      $field->type = $this->modules->get("FieldtypeInteger");
-      $field->name = "task_state";
-      $field->label = "Task state";
-      $field->inputType = "number";
-      $field->min = "0";
-      $field->max = "10";
-      $field->tags = 'Tasker';
-      $field->save();
-      $fg->add($field);
-    }
-
-    $field = $this->fields->get('task_running');
-    if (!@$field->id) {
-      $field = new Field();
-      $field->type = $this->modules->get("FieldtypeInteger");
-      $field->name = "task_running";
-      $field->label = "Is this task running?";
-      $field->inputType = "number";
-      $field->min = "0";
-      $field->max = "1";
-      $field->tags = 'Tasker';
-      $field->save();
-      $fg->add($field);
-    }
-
-    $field = $this->fields->get('progress');
-    if (!@$field->id) {
-      $field = new Field();
-      $field->type = $this->modules->get("FieldtypeInteger");
-      $field->name = "progress";
-      $field->label = "Progress (in %)";
-      $field->inputType = "number";
-      $field->min = "0";
-      $field->max = "100";
-      $field->tags = 'Tasker';
-      $field->save();
-      $fg->add($field);
-    }
-
-    $field = $this->fields->get('signature');
-    if (!@$field->id) {
-      $field = new Field();
-      $field->type = $this->modules->get("FieldtypeText");
-      $field->name = "signature";
-      $field->label = "Signature";
-      $field->save();
-    }
-
-    $field = $this->fields->get('log_messages');
-    if (!@$field->id) {
-      $field = new Field();
-      $field->type = $this->modules->get("FieldtypeTextarea");
-      $field->name = "log_messages";
-      $field->label = "Log messages";
-      $field->save();
+    // create and add required fields, update the fg if necessary
+    foreach ($this->myFields as $fname => $fcdata) {
+      $field = $this->fields->get($fname);
+      if (!@$field->id) {
+        $field = new Field();
+        $field->name = $fname;
+        $field->label = $fcdata['label'];
+        $field->type = $this->modules->get($fcdata['type']);
+        if ($fcdata['type'] == 'FieldtypeInteger') {
+          $field->inputType = 'number';
+          $field->min = $fcdata['min'];
+          $field->max = $fcdata['max'];
+        }
+        if ($fname != 'title') $field->tags = 'Tasker';
+        $field->save();
+      }
+      if (!$fg->hasField($field)) $fg->add($field);
     }
 
     // save the fieldgroup
     $fg->save();
 
-    // add a new template using the fieldgroup
-    $t = $this->templates->get('Task');
-    if (!$t->id){
-      $t = new Template();
-      $t->name = 'Task';//Used different name other than file name
-      $t->noLang = true;
-      $t->fieldgroup = $fg; // add the field group
-      $t->save();
-    }
   }
 
 
@@ -149,7 +103,25 @@ class Tasker extends WireData implements Module {
    * Drops database table created during installation.
    */
   public function ___uninstall() {
-    // TODO delete the task template??
+    // Delete the task template if no content present
+    if ($this->taskTemplate && !$this->pages->count('template='.$this->taskTemplate.',include=hidden')) {
+      $t = $this->templates->get('tasker_task');
+      if ($t) {
+        $this->templates->delete($t);
+      }
+      $fg = $this->fieldgroups->get('tasker-fieldgroup');
+      if (@$fg->id) {
+        $this->fieldgroups->delete($fg);
+      }
+      foreach ($this->myFields as $fname => $fcdata) {
+        $field = $this->fields->get($fname);
+        if ($field) {
+          if ($field->numFieldgroups() > 0) continue;
+          if (@$field->getTemplates()->count() > 0) continue;
+          $this->fields->delete($field);
+        }
+      }
+    }
   }
 
   /**
