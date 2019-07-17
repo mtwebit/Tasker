@@ -21,8 +21,8 @@ $info = array(
   'icon' => 'tasks',
   'page' => array( // an admin page for this module
     'name' => 'tasks',
-    'parent' => '/admin/page/',
-    'title' => 'Task management',
+    'parent' => 'page',
+    'title' => 'Tasks',
     'template' => 'admin'
   ),
 );
