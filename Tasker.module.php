@@ -559,7 +559,8 @@ class Tasker extends WireData implements Module {
    * This is called by the runByCron.sh shell script.
    */
   public function executeByCron() {
-    if (!$this->enableCron) { echo "Cron is disabled in Tasker.\n"; return; }
+    // silently exit if cron is disabled on the module's setting page
+    if (!$this->enableCron) return;
     // Limit the number of running tasks. TODO make this configurable
     if ($this->pages->count("template={$this->taskTemplate},task_running=1,include=hidden")>3) { echo "Maximum number of running tasks reached.\n"; return; }
     // find a ready-to-run but not actually running task to execute

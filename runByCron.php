@@ -13,7 +13,7 @@
 require "../../../index.php";
 
 if (!wire('modules')->isInstalled('Tasker')) {
-  echo 'Tasker module is missing.';
+//  echo 'Tasker module is missing.';
   exit;
 }
 
