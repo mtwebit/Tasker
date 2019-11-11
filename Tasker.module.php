@@ -539,8 +539,8 @@ class Tasker extends WireData implements Module {
     if ($this->config->debug) echo "LazyCron invoking Tasker to execute '{$task->title}'.<br />\n";
 
     while (!($task instanceof NullPage) && !$this->executeTaskNow($task, $params)) { // if can't exec this
-      // find a next candidate
-      if ($this->config->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.<br />\n";
+      // find the next candidate
+      if ($this->config->debug) echo "Failed to execute '{$task->title}'. Tasker is trying to find another candidate.<br />\n";
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
     }
@@ -577,13 +577,18 @@ class Tasker extends WireData implements Module {
     if ($this->config->debug) echo "Cron invoking Tasker to execute '{$task->title}'.\n";
 
     while (!($task instanceof NullPage) && !$this->executeTaskNow($task, $params)) { // if can't exec this
-      // find a next candidate if cron is still enabled
-      if (!$this->enableCron) return;
-      if ($this->config->debug) echo "Could not execute '{$task->title}'. Tasker is trying to find another candidate.\n";
+      // find the next candidate if cron is still enabled
+      if (!$this->enableCron) break;
+      if ($this->config->debug) {
+        echo "Failed to execute '{$task->title}'. Tasker is trying to find another candidate.\n";
+        // Dump out messages on task failure
+        foreach(wire('notices') as $notice) {
+          echo wire('sanitizer')->entities($notice->text) . "\n";
+        }
+      }
       $selector .= ",id!=".$task->id;
       $task = $this->pages->findOne($selector);
     }
-    // TODO this dumps nothing if the task has been finished, dump its log messages instead?
     echo $task->log_messages."\n";
   }
 
@@ -636,7 +641,7 @@ class Tasker extends WireData implements Module {
    * @returns false on exec error
    */
   private function executeTaskNow(Page $task, $params) {
-    if (!$this->allowedToExecute($task, $params)) return;
+    if (!$this->allowedToExecute($task, $params)) return false;
 
     // decode the task data into an associative array
     $taskData = json_decode($task->task_data, true);
