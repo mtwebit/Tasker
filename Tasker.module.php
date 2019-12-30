@@ -721,8 +721,14 @@ class Tasker extends WireData implements Module {
     $oldAllowExceptions = $this->config->allowExceptions;
     $this->config->allowExceptions = true;
 
-    // execute the function and capture its output
+    // capture output while the task runs
     ob_start();
+    
+    // use innodb transactions
+    if ($this->database->supportsTransaction()) {
+      $this->database->beginTransaction();
+    }
+
     try {
       $res = $function($page, $taskData, $params);
       ob_end_flush();
@@ -731,8 +737,31 @@ class Tasker extends WireData implements Module {
       $this->message('ERROR: ' . $e->getMessage());
       $this->message(ob_get_contents());
       $this->message($e->getTraceAsString());
+
       // TODO logging to file?
       ob_end_clean();
+    }
+
+    // Check the DB connection (handle MySQL gone away and similar DB errors)
+    try {
+      // Execute a simple command with no inputs
+      // From the PW API: "If connection is lost, this will restore it automatically."
+      $this->database->pdo()->query('SHOW DATABASES');
+    } catch (\Exception $e) {
+      $res = false;
+      $this->message('ERROR: Fatal DB exception: ' . $e->getMessage());
+      // Dump out the logs
+      foreach(wire('notices') as $notice) echo $notice->text."\n";
+      // and exit right now
+      exit();
+    }
+
+    if ($this->database->supportsTransaction()) {
+      if ($res) {
+        $this->database->commit();
+      } else {
+        $this->database->rollback();
+      }
     }
 
     // restore old exception config
