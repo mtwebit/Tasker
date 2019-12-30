@@ -9,7 +9,7 @@ The TaskerAdmin module provides a Javascript-based frontend to list tasks, to ch
 ## How does it work
 See the [Wiki](https://github.com/mtwebit/Tasker/wiki)
 
-## Examples
+## Examples for module developers
 The [DataSet](https://github.com/mtwebit/DataSet/) module performs long-running page imports and deletions using Tasker.  
 Check createTasksOnPageSave(), import() and purge() for more details.  
   
