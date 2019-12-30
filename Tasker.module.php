@@ -937,4 +937,28 @@ class Tasker extends WireData implements Module {
         default: return $size_str;
     }
   }
+
+
+/***********************************************************************
+ * TASK PROFILING
+ **********************************************************************/
+  /**
+   * Reset the profiler timer
+   */
+  public function profilerReset() {
+    global $utimer;
+    $utimer = microtime(true);
+  }
+
+  /**
+   * Return the relative timestamp string
+   * 
+   * @returns timestamp string
+   */
+  public function profilerGetTimestamp() {
+    global $utimer;
+
+    if (!$this->profiling) return '';
+    return '['.round(microtime(true) - $utimer, 2) . '] ';
+  }
 }
