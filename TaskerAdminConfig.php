@@ -31,18 +31,14 @@ class TaskerAdminConfig extends ModuleConfig {
     $f = $this->modules->get('InputfieldMarkup');
     $f->label = __('About the module');
     $f->columnWidth = 50;
-    $f->value = __('<p>
-This module provides an admin interface and a backend API for Tasker.
-For more information check the module\'s home at https://github.com/mtwebit/Tasker/
-</p>');
+    $f->value = __('This module provides an admin interface and a backend API for Tasker.
+For more information check the module\'s home');
     $fieldset->add($f);
 
     $f = $this->modules->get('InputfieldMarkup');
     $f->label = __('Usage tips');
     $f->columnWidth = 50;
-    $f->value = '<p>
-- if autoStart is enabled, page saves may redirect to TaskerAdmin if a task has been started.<br />
-</p>';
+    $f->value = __('See the Wiki on the GitHub!');
     $fieldset->add($f);
 
     $inputfields->add($fieldset);
@@ -52,16 +48,9 @@ For more information check the module\'s home at https://github.com/mtwebit/Task
     $fieldset->label = __('Module settings');
 
     $f = $this->modules->get('InputfieldCheckbox');
-    $f->attr('name', 'autoStart');
-    $f->label = __('Automatically start an active task');
-    $f->description = __('If a task becomes active start it immediately, if possible. Other modules may use this setting to redirect to TaskerAdmin\'s task monitoring page.');
-    $f->columnWidth = 50;
-    $fieldset->add($f);
-
-    $f = $this->modules->get('InputfieldCheckbox');
     $f->attr('name', 'enableWebRun');
     $f->label = __('Allow executing tasks using TaskerAdmin\'s Web interface');
-    $f->description = __('TaskerAdmin provides a Web interface to manage tasks. Allow tasks to be executed using this interface.');
+    $f->description = __('A Javascript frontend utility will periodically call the Tasker backend to execute the selected task.');
     $f->columnWidth = 50;
     $fieldset->add($f);
 
