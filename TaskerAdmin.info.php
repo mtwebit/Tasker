@@ -13,8 +13,8 @@
 
 $info = array(
   'title' => 'Task Administration',
-  'version' => '0.9.5',
-  'summary' => 'The module provides Web UI for task administration.',
+  'version' => '1.0.0',
+  'summary' => 'The module provides Web UI for task execution and administration.',
   'href' => 'https://github.com/mtwebit/Tasker/',
   'singular' => true,
   'autoload' => false,
