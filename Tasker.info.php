@@ -14,10 +14,10 @@
 
 $info = array(
   'title' => 'Tasker module',
-  'version' => '0.9.5',
+  'version' => '1.0.0',
   'summary' => 'The module provides support for executing long-running tasks.',
   'href' => 'https://github.com/mtwebit/Tasker/',
   'singular' => true,
-  'autoload' => true,
+  'autoload' => false,
   'icon' => 'tasks',
 );
