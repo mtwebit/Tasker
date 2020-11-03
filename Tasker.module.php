@@ -425,8 +425,10 @@ class Tasker extends WireData implements Module {
    * @param $checkEvents if true runtime events (e.g. OS signals) will be processed
    */
   public function saveProgress($task, $taskData, $updateState=true, $checkEvents=true) {
-    if ($taskData['max_records']) // report progress if max_records is calculated
+    if ($taskData['max_records']) { // report progress if max_records is calculated
       $task->setAndSave('progress', round(100 * $taskData['records_processed'] / $taskData['max_records'], 2));
+    }
+    // store task data
     $task->setAndSave('task_data', json_encode($taskData));
     // store and clear messages
     foreach(wire('notices') as $notice) $task->log_messages .= $notice->text."\n";
@@ -465,7 +467,7 @@ class Tasker extends WireData implements Module {
       return false;
 
     // save the progress
-    // this may alter the task's state (if updateState or checkEvents is true
+    // this may alter the task's state (if updateState or checkEvents is true)
     $this->saveProgress($task, $taskData, $updateState, $checkEvents);
 
     return true;
@@ -807,14 +809,14 @@ class Tasker extends WireData implements Module {
   public function allowedToExecute(Page $task, $params) {
     // check whether the task is still active (not stopped by others)
     if (!$this->isActive($task)) {
-      $this->message("Task '{$task->title}' is stopped because it is not active.", Notice::debug);
+      $this->message("Task '{$task->title}' is not executed because it is not active.", Notice::debug);
       return false;
     }
 
     // suspend the task if the allowed execution time is over
-    // TODO try to estimate a single round (now 2 sec is assumed)
-    if ($params['timeout'] && ($params['timeout'] - 2 < time())) {
-      $this->message("Task '{$task->title}' is suspended due to time limits.", Notice::debug);
+    // TODO try to estimate a single round (now 3 sec is assumed)
+    if ($params['timeout'] && ($params['timeout'] - 4 < time())) {
+      $this->message("Task '{$task->title}' is suspended due to time limit.", Notice::debug);
       return false;
     }
 
@@ -822,7 +824,7 @@ class Tasker extends WireData implements Module {
     // TODO try to find a better constant multiplier
     if (isset($params['memory_limit'])
         && memory_get_usage() >= $params['memory_limit'] * 0.8){
-      $this->message("Task '{$task->title}' is suspended due to memory limits.", Notice::debug);
+      $this->message("Task '{$task->title}' is suspended due to memory limit.", Notice::debug);
       return false;
     }
 
