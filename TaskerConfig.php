@@ -36,18 +36,13 @@ class TaskerConfig extends ModuleConfig {
     $f = $this->modules->get('InputfieldMarkup');
     $f->label = __('About the module');
     $f->columnWidth = 50;
-    $f->value = __('<p>
-This module provides support for execution of long-running tasks.
-For more information check the module\'s home at https://github.com/mtwebit/Tasker/
-</p>');
+    $f->value = __('This module provides support for execution of long-running tasks.');
     $fieldset->add($f);
 
     $f = $this->modules->get('InputfieldMarkup');
     $f->label = __('Usage tips');
+    $f->value = __('See the GitHub page!');
     $f->columnWidth = 50;
-    $f->value = '<p>
-- <br />
-</p>';
     $fieldset->add($f);
 
     $inputfields->add($fieldset);
@@ -57,20 +52,21 @@ For more information check the module\'s home at https://github.com/mtwebit/Task
     $fieldset->label = __('Scheduler setup');
 
     $f = $this->modules->get('InputfieldCheckbox');
+    $f->attr('name', 'enableCron');
+    $f->label = __('Enable Cron-based execution of tasks');
+    $f->description = __('Unix Cron will be used to perform tasks in the background in every minute.');
+    $f->columnWidth = 50;
+    $fieldset->add($f);
+
+    $f = $this->modules->get('InputfieldCheckbox');
     $f->attr('name', 'enableLazyCron');
-    $f->label = __('Enable LazyCron execution of tasks');
+    $f->label = __('Enable LazyCron-based execution of tasks');
     if (!$this->modules->isInstalled('LazyCron')) {
       $f->description = __('LazyCron is not installed, this setting does not have any effect.');
     } else {
       $f->description = __('LazyCron can be used to perform tasks in the background in every minute.');
     }
-    $f->columnWidth = 50;
-    $fieldset->add($f);
-
-    $f = $this->modules->get('InputfieldCheckbox');
-    $f->attr('name', 'enableCron');
-    $f->label = __('Enable Cron execution of tasks');
-    $f->description = __('Unix Cron will be used to perform tasks in the background in every minute.');
+    $f->description .= __(' Use this if you don\'t have cron on your system.');
     $f->columnWidth = 50;
     $fieldset->add($f);
 
@@ -83,7 +79,7 @@ For more information check the module\'s home at https://github.com/mtwebit/Task
     $f = $this->modules->get('InputfieldText');
     $f->attr('name', 'ajaxTimeout');
     $f->label = __('Max exec time for HTTP (AJAX) task execution.');
-    $f->description = __('Lower value means more frequent progress field updates and higher overhead. Should be less than ').ini_get('max_execution_time');
+    $f->description = __('Lower value means more frequent progress updates and higher overhead. Should be less than PHP\'s max execution time which is ').ini_get('max_execution_time');
     $f->required = true;
     $f->columnWidth = 50;
     $fieldset->add($f);
@@ -113,14 +109,14 @@ For more information check the module\'s home at https://github.com/mtwebit/Task
     $f = $this->modules->get('InputfieldCheckbox');
     $f->attr('name', 'debug');
     $f->label = __('Debug mode');
-    $f->description = __('Enable detailed log messages while executing tasks.');
+    $f->description = __('Enable detailed log messages while executing tasks. Use only while you develop your custom task code as it greatly affects performance and may cause timeout errors.');
     $f->columnWidth = 50;
     $fieldset->add($f);
 
     $f = $this->modules->get('InputfieldCheckbox');
     $f->attr('name', 'profiling');
     $f->label = __('Execution profiling');
-    $f->description = __('Add timestamps (in seconds) to certain debug messages for basic code profiling.');
+    $f->description = __('Adds timestamps to certain log messages for basic code profiling. This is useful if you develop custom tasks and you want to profile your code.');
     $f->columnWidth = 50;
     $fieldset->add($f);
 
