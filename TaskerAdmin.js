@@ -3,54 +3,24 @@
  * 
  * Performs API calls to query task status / execute command etc.
  * 
- * Copyright 2017-2019 Tamas Meszaros <mt+git@webit.hu>
+ * Copyright 2017-2020 Tamas Meszaros <mt+git@webit.hu>
  * This file licensed under Mozilla Public License v2.0 http://mozilla.org/MPL/2.0/
  */
 
-/*
-$(document).ready(function() {
-  if ( $("#tasker").length) tasker_client();
-});
-
-function tasker_client() {
-  tasker = $("#tasker");
-
-  // for each running task create and display a progressbar
-  tasker.children('div[run]').each(function() {
-    var progressbar = $(this).children('div.progress-bar').first(),
-        progressLabel = progressbar.children('div').first(),
-        taskId = $(this).attr('taskid');
-
-    if (!progressbar) return;
-
-    // create a progressbar for the task
-    progressbar.progressbar({
-      value: false,
-      change: function() {
-        progressLabel.text(progressbar.progressbar( "value" ) + "% done.");
-      },
-    });
-
-    // call the API with the specified command
-    progressLabel.text("Querying status...");
-    performApiCall(ProcessWire.config.tasker.apiUrl + '/?cmd=run&id=' + taskId, statusCallback, progressbar);
-  });
-}
-*/
-
 // Execute a command on a given task using backend API calls
 function TaskerAction(taskId, command) {
-  taskerAdminApiUrl = ProcessWire.config.tasker.apiUrl,
+  taskerAdminAPIUrl = ProcessWire.config.tasker.apiUrl,
   taskdiv = $("div[taskid='" + taskId + "']"),
   taskdiv.children("ul.actions").hide();
   taskdiv.children("i.fa").hide();
   taskdiv.children('span.TaskTitle').prepend('<b>Calling ' + command + ':</b> ');
-  performApiCall(taskerAdminApiUrl + '/?id=' + taskId + '&cmd=' + command, statusCallback);
+
+  performAPICall(taskerAdminAPIUrl + '/?id=' + taskId + '&cmd=' + command, statusCallback, taskdiv);
 }
 
-// perform a HTTP AJAX (JSON) request and handle errors if necessary
-function performApiCall(url, callback, progressbar) {
-  var debuglog = $("#tasker").next("div.NoticeMessages"),
+// perform a HTTP request to the TaskerAdmin API and display the results
+function performAPICall(url, callback, taskdiv) {
+  var msgText = taskdiv.children("span.TaskTitle"),
       timeout = ProcessWire.config.tasker.timeout + 500, // add some extra time
       unloading = false;
 
@@ -64,15 +34,13 @@ function performApiCall(url, callback, progressbar) {
     success: callback,
     timeout: timeout,
     error: function(jqXHR, status, errorThrown) {
-      var progressLabel = progressbar.children('div').first(),
-      taskdiv = progressbar.parent();
       taskdiv.children("ul.actions").remove(); // remove the action buttons on error
       if (status == 'timeout') {
-        progressLabel.text("Request timeout. Please check the backend for more info.");
+        msgText.append(" <b>ERROR:</b> Request timeout. Please check the backend for more info.");
       } else if (unloading) {
-        progressLabel.text("Cancelling request...");
+        msgText.append(" Cancelling request...");
       } else {
-        progressLabel.text("Error receiving response from the server: " + status);
+        msgText.append(" <b>ERROR:</b> Invalid response from the server: " + status);
       }
     }
   });
@@ -81,20 +49,9 @@ function performApiCall(url, callback, progressbar) {
 // callback for HTTP requests
 function statusCallback(data) {
   var taskId = data['taskid'],
-      debuglog = $("#tasker").next("div.NoticeMessages"),
       taskdiv = $("div[taskid='" + taskId + "']"),
-      progressbar = $("div[taskid='" + taskId + "'] > div"),
-      progressLabel = progressbar.children('div').first(),
-      run = taskdiv.attr('run'),
-      repeatTime = taskdiv.attr('repeatTime');
-
-  if (!data['status']) { // return status is not OK
-    progressbar.progressbar("value", false);
-    progressLabel.text("Error: " + data["result"]);
-    if (debuglog.length) debuglog.append(data['log']);
-    taskdiv.children("span.TaskTitle").append(' <b>ERROR: Command failed</b>');
-    return;
-  }
+      msgText = taskdiv.children("span.TaskTitle"),
+      progressbar = taskdiv.children("div.progressbar");
 
   if (data['status_html'] == '') {
     // Task not found (e.g. trashed), remove it from the tasklist
@@ -102,16 +59,26 @@ function statusCallback(data) {
     return;
   }
 
-  // replace the task div with the new html code
+  // replace the task div with the new HTML content
   taskdiv.replaceWith(data['status_html']);
 
-  if (debuglog.length) {
-    debuglog.html(data['log']);
+  if (!data['status']) { // return status is not OK
+    if (progressbar.length) progressbar.remove();
+    return;
   }
 
-  if (!progressbar) return;
+  // update the variables from the newly received content
+  taskdiv = $("div[taskid='" + taskId + "']");
+  progressbar = taskdiv.children("div.progressbar");
 
-  // create a progressbar for the task
+  if (!progressbar.length) return;
+
+  run = taskdiv.attr('run'),
+  repeatTime = taskdiv.attr('repeatTime');
+
+  progressLabel = progressbar.children('div.progress-label');
+
+  // initialize a progressbar for the task
   progressbar.progressbar({
     value: false,
     change: function() {
@@ -119,15 +86,19 @@ function statusCallback(data) {
     },
   });
 
+  progressLabel.text("Querying task's status...");
+
   progressbar.progressbar("value", data['progress']);
 
-  if (run) { // we're executing the task
+// TODO don't execute the task if it is stopped by another request
+
+  if (run) { // we're executing the task and it is still active
     if (repeatTime > 0) {
       setTimeout(function() {
-        performApiCall(ProcessWire.config.tasker.apiUrl + '/?cmd=run&id=' + taskId, statusCallback, progressbar);
+        performAPICall(ProcessWire.config.tasker.apiUrl + '/?cmd=run&id=' + taskId, statusCallback, taskdiv);
       }, 1000 * Number(repeatTime));
     } else {
-      performApiCall(ProcessWire.config.tasker.apiUrl + '/?cmd=run&id=' + taskId, statusCallback, progressbar);
+      performAPICall(ProcessWire.config.tasker.apiUrl + '/?cmd=run&id=' + taskId, statusCallback, taskdiv);
     }
   }
 }

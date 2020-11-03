@@ -63,79 +63,24 @@ class TaskerAdmin extends Process implements Module {
  * Process module endpoints
  * 
  * Module routing under <admin>/page/tasks
- *     admin page - loc: /[?id=$taskId&cmd=$command] - execute() - display tasks or execute a command or a task
  *     JSON API   - loc: /api/?id=$taskId&cmd=$command - executeApi() - execute an api call or a task and return a JSON object
  *    
  * More info about routing:
  * https://processwire.com/talk/topic/7832-module-routing-executesomething-versus-this-input-urlsegment1-in-process-modules/
  **********************************************************************/
   /**
-   * Execute the main function for the admin menu interface
+   * Main function for the admin menu interface
    */
   public function execute() {
-    list ($command, $taskId, $params) = $this->analyzeRequestURI($_SERVER['REQUEST_URI']);
-    if ($command !== false) {
-      // the run command will display it's own page
-      if ($command == 'run') return $this->runCommand($command, $taskId, $params);
-      $out = '<h2>Executing command '.$command.'</h2>';
-      $out .= '<p>'.$this->runCommand($command, $taskId, $params).'</p>';
-    } else $out = '';
-
-    $out .= '<h2>Task management</h2>';
+    $out = '<h2>Task management</h2>';
     $out .= $this->renderTaskList();
 
-    $out .= '<p><a href="'.$this->page->url.'">Refresh this page.</a></p>';
+    $out .= '<p><a href="'.$this->page->url.'">Refresh this list.</a></p>';
     return $out;
   }
 
-
   /**
-   * Execute a command
-   * 
-   * @param $command string command
-   * @param $taskId int ID of the task Page
-   * @param $params assoc array of query arguments
-   * 
-   */
-  public function runCommand($command, $taskId, $params) {
-    $tasker = wire('modules')->get('Tasker');
-    $task = $tasker->getTaskById($taskId);
-    if ($task instanceof NullPage) {
-      $this->error('Task not found.');
-      return;
-    }
-
-    switch ($command) {
-      case 'activate':   // activate the task (will be executed by Cron or LazyCron)
-        return ($tasker->activateTask($task) ? 'Starting task ' : 'Failed to start ').$task->title;
-      case 'suspend': // suspend the task but keep its progress
-        return ($tasker->stopTask($task) ? 'Suspending ' : 'Failed to suspend ').$task->title;
-      case 'reset':   // reset progress, clear the logs but keep the task active (restart)
-        return ($tasker->stopTask($task, false, true) ? 'Resetting ' : 'Failed to reset ').$task->title;
-      case 'kill':    // stop the task, but keep progress and log messages
-        return ($tasker->stopTask($task, true, false) ? 'Killed task ' : 'Failed to kill ').$task->title;
-      case 'trash':   // delete the task
-        return ($tasker->trashTask($task, $params) ? 'Removed task ' : 'Failed to trash ').$task->title;
-      case 'run':     // execute and monitor the task right now, see below
-        break;
-      default:
-        return 'Unknown command: '.$command;
-    }
-
-    // start the task (set status to Active)
-    $tasker->activateTask($task);
-
-    // render only this task and put a message low below it
-    $out = '<h2>Executing and monitoring task: '.$task->title.'</h2>';
-    $out .= $this->renderTaskList('id='.$task->id, '', '', 'run');
-
-    return $out;
-    // the task will be executed by Javascript functions
-  }
-
-
-  /**
-   * Public admin API functions over HTTP (/api)
+   * HTTP JSON API endpoint
    * URI structure: .... api/?id=taskId&cmd=command[&arguments]
    */
   public function executeApi() {
@@ -215,9 +160,9 @@ class TaskerAdmin extends Process implements Module {
         $ret['status'] = true;
         $ret['result'] = $task->title;
         break;
-      case 'restart': // reset progress then start the task
+      case 'restart': // reset progress then activate the task
         $tasker->resetProgress($task);
-      case 'activate':   // activate the task, will be started/continued by Cron or LazyCron
+      case 'activate':   // activate the task (will be run by Cron or LazyCron)
         $ret['status'] = true;
         $ret['result'] = $tasker->activateTask($task);
         $ret['task_running'] = $task->task_running;
@@ -238,10 +183,11 @@ class TaskerAdmin extends Process implements Module {
           exit;
         }
         $ret['status'] = true;
-        // change the command to 'run' to activate the JS backend executor
+        $ret['result'] = $tasker->activateTask($task);
+        // change the command to 'run' to activate the JS backend executor during tasklist rendering
         $command = 'run';
         break;
-      case 'reset':   // reset progress and logs but keep it running
+      case 'reset':   // reset progress and logs
         $ret['status'] = true;
         $tasker->stopTask($task, false, true);
         break;
@@ -249,7 +195,7 @@ class TaskerAdmin extends Process implements Module {
         $ret['status'] = true;
         $tasker->stopTask($task);
         break;
-      case 'kill':    // reset progress and stop the task
+      case 'kill':    // stop the running task
         $ret['status'] = true;
         $tasker->stopTask($task, true, true);
         break;
@@ -271,9 +217,15 @@ class TaskerAdmin extends Process implements Module {
     $ret['task_state'] = $task->task_state;
     $ret['task_state_info'] = $this->stateInfo[$task->task_state];
     $ret['log'] .= "\n<ul class='NoticeMessages'>\n";
-    foreach (explode("\n", $task->log_messages) as $msg) {
-      $ret['log'] .= "  <li>$msg</li>\n";
+    // return the PW notice messages in the debug log
+    foreach(wire('notices') as $msg) {
+      if (strlen(trim($msg))) $ret['log'] .= "  <li>$msg</li>\n";
     }
+    /* skip the full task log
+    foreach (explode("\n", $task->log_messages) as $msg) {
+      if (strlen(trim($msg))) $ret['log'] .= "  <li>$msg</li>\n";
+    }
+    */
     $ret['log'] .= "</ul>\n";
     echo json_encode($ret);
     exit; // don't output anything else
@@ -339,7 +291,7 @@ class TaskerAdmin extends Process implements Module {
       $icon = 'fa-clock-o'; // TODO 'fa-hourglass' or 'fa-spinner' ?
       $actions = array('activate' => 'Activate');
       if ($this->enableWebRun) { // if Web-based task execution is enabled
-        $actions['run'] = 'Run now';
+        $actions['start'] = 'Run now';
       }
       if ($task->task_running) $taskState = 'preempting';
       break;
@@ -350,24 +302,26 @@ class TaskerAdmin extends Process implements Module {
       if (!$task->task_running && $this->enableWebRun) {
         if ($jsCommand == 'run') {
           $out .= ' run="1"';   // instruct the JS route to run the task
+          $taskState = 'running';   // display the running state
         } else {
-          $actions['run'] = 'Execute via Web';  // add a run action
+          $actions['start'] = 'Run now';  // add a run action
         }
-      }
-      if ($task->task_running) $taskState = 'running';
-      else $taskState = 'ready to run';
+      } else if ($task->task_running) $taskState = 'running';
       break;
     case Tasker::taskFinished:
       $icon = 'fa-check';
       $actions['reset'] = 'Reset';
+      if ($jsCommand == 'run') $jsCommand='';  // clear the run command if the task is finished
       break;
     case Tasker::taskKilled:
       $icon = 'fa-hand-stop-o';
       if ($task->task_running) $taskState = 'killing';
+      if ($jsCommand == 'run') $jsCommand='';  // clear the run command if the task is killed
       break;
     case Tasker::taskFailed:
       $icon = 'fa-warning';
       $actions = array('activate' => 'Try again');
+      if ($jsCommand == 'run') $jsCommand='';  // clear the run command if the task is failed
       break;
     default:
       $icon = 'fa-question';
@@ -375,7 +329,7 @@ class TaskerAdmin extends Process implements Module {
 
     // Add a reset button if the task has made any progress
     if ($task->progress > 0) {
-      $logSummary = ' ('.$tasker->getLogSummary($task).')';
+      $logSummary = ' ('.$tasker->getLogSummary($task, true, true).')';
       $actions['reset'] = 'Reset';
     }
 
@@ -393,15 +347,9 @@ class TaskerAdmin extends Process implements Module {
         ';
 
     foreach ($actions as $cmd => $title) {
-      if ($jsCommand == $cmd) continue; // we're already executing the command, skip its menu element
-      if ($cmd == 'run') {  // insert a link to the admin page to run the task using JS calls
-        $out .= '<li style="display: inline !important;"'.$liClass.'>
-                 <a href="'.$this->adminUrl.'?id='.$task->id.'&cmd=run"'.$aClass.'>'.$title."</a>
-                 </li>\n";
-      } else { // stay on the current page and execute these commands using background JS calls
-        $out .= '<li style="display: inline !important;"'.$liClass.'>
-                 <span><a onclick="TaskerAction(\''.$task->id.'\', \''.$cmd.'\')"'.$aClass.'>'.$title."</a></span>\n</li>\n";
-      }
+      if ($jsCommand == $cmd) continue; // skip the active command
+      $out .= '<li style="display: inline !important;"'.$liClass.'>
+               <span><a onclick="TaskerAction(\''.$task->id.'\', \''.$cmd.'\')"'.$aClass.'>'.$title."</a></span>\n</li>\n";
     }
 
     // insert a link to the task's edit page to show its details
@@ -411,9 +359,8 @@ class TaskerAdmin extends Process implements Module {
 
     $out .= "\n</ul>\n";
 
-    // add a progress bar to running tasks
-    if ($jsCommand == 'run' || $task->task_running) {
-      $out .= '<div class="progress-bar"><div class="progress-label"></div></div>';
+    if ($jsCommand == 'run') {  // if the task is running
+      $out .= '<div class="progressbar"><div class="progress-label"></div></div>';
     }
 
     return $out . "\n</div>\n";
