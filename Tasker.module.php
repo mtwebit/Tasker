@@ -470,6 +470,12 @@ class Tasker extends WireData implements Module {
     // this may alter the task's state (if updateState or checkEvents is true)
     $this->saveProgress($task, $taskData, $updateState, $checkEvents);
 
+	// end the previous transaction and begin a new one
+    if ($this->database->inTransaction()) {
+      $this->database->commit();
+      $this->database->beginTransaction();
+    }
+
     return true;
   }
 
@@ -758,7 +764,7 @@ class Tasker extends WireData implements Module {
       exit();
     }
 
-    if ($this->database->supportsTransaction()) {
+    if ($this->database->inTransaction()) {
       if ($res) {
         $this->database->commit();
       } else {
