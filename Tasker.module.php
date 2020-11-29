@@ -29,13 +29,13 @@ class Tasker extends WireData implements Module {
   const exTimeout = 1;
   // Tasker template fields
   private $myFields = array(
-    'title' => array('type' => 'FieldtypePageTitle', 'Label' => 'Title'),
-    'task_data' => array('type' => 'FieldtypeTextarea', 'Label' => 'Task data'),
-    'task_state' => array('type' => 'FieldtypeInteger', 'Label' => 'Task state', 'min' => '0', 'max' => '10'),
-    'task_running' => array('type' => 'FieldtypeInteger', 'Label' => 'Task is running', 'min' => '0', 'max' => '1'),
-    'progress' => array('type' => 'FieldtypeInteger', 'Label' => 'Progress [%]', 'min' => '0', 'max' => '100'),
-    'signature' => array('type' => 'FieldtypeText', 'Label' => 'Signature'),
-    'log_messages' => array('type' => 'FieldtypeTextarea', 'Label' => 'Log messages')
+    'title' => array('type' => 'FieldtypePageTitle', 'label' => 'Title'),
+    'task_data' => array('type' => 'FieldtypeTextarea', 'label' => 'Task data'),
+    'task_state' => array('type' => 'FieldtypeInteger', 'label' => 'Task state', 'min' => '0', 'max' => '10'),
+    'task_running' => array('type' => 'FieldtypeInteger', 'label' => 'Task is running', 'min' => '0', 'max' => '1'),
+    'progress' => array('type' => 'FieldtypeInteger', 'label' => 'Progress [%]', 'min' => '0', 'max' => '100'),
+    'signature' => array('type' => 'FieldtypeText', 'label' => 'Signature'),
+    'log_messages' => array('type' => 'FieldtypeTextarea', 'label' => 'Log messages')
   );
 
 /***********************************************************************
