@@ -688,6 +688,8 @@ class Tasker extends WireData implements Module {
     // pass over the task object to the function
     $params['task'] = $task;
 
+    // TODO move this to the cmd-line specific part
+    // See https://www.php.net/manual/en/intro.pcntl.php
     // set a signal handler to handle stop requests
     $itHandler = function ($signo) use ($task) {
       $this->messages('Task was suspended by user request.');
@@ -697,6 +699,7 @@ class Tasker extends WireData implements Module {
     pcntl_signal(SIGTERM, $itHandler);
     pcntl_signal(SIGINT, $itHandler);
 
+    // TODO check if pcntl_signal() is available
     // if we have a timeout value then setup an alarm clock
     if ($params['timeout'] > 0) {
       pcntl_signal(SIGALRM, function ($signo) use ($task) {
