@@ -84,6 +84,8 @@ class Tasker extends WireData implements Module {
           $field->inputType = 'number';
           $field->min = $fcdata['min'];
           $field->max = $fcdata['max'];
+        } else if ($fname == 'log_messages') {
+	  // TODO disable indexing for this field when core has support for this
         }
         if ($fname != 'title') $field->tags = 'Tasker';
         $field->save();
