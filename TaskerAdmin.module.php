@@ -72,8 +72,20 @@ class TaskerAdmin extends Process implements Module {
    * Main function for the admin menu interface
    */
   public function execute() {
-    $out = '<h2>Task management</h2>';
-    $out .= $this->renderTaskList();
+    $out = '<b>Sort by: <a href="'.$this->page->url.'">Default</a> | ';
+    $out .= '<a href="'.$this->page->url.'?sort=task_state">Status</a> | ';
+    $out .= '<a href="'.$this->page->url.'?sort=-created">Created</a> | ';
+    $out .= '<a href="'.$this->page->url.'?sort=-modified">Updated</a> | ';
+    $out .= '<a href="'.$this->page->url.'?sort=progress">Progress</a></b>';
+
+    list ($command, $taskId, $params) = $this->analyzeRequestURI($_SERVER['REQUEST_URI']);
+
+    if (isset($params['sort'])) {
+      $sortkey = wire('sanitizer')->selectorValue($params['sort']);
+      $out .= $this->renderTaskList('sort=' . $sortkey);
+    } else {
+      $out .= $this->renderTaskList();
+    }
 
     $out .= '<p><a href="'.$this->page->url.'">Refresh this list.</a></p>';
     return $out;
