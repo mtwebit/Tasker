@@ -572,7 +572,7 @@ class Tasker extends WireData implements Module {
     // silently exit if cron is disabled on the module's setting page
     if (!$this->enableCron) return;
     // Limit the number of running tasks to 1 to avoid MySQL deadlocks
-    if ($this->pages->count("template={$this->taskTemplate},task_running=1,include=hidden")>1) { echo "Maximum number of running tasks reached.\n"; return; }
+    if ($this->pages->count("task_running=1,include=hidden")>1) { echo "Maximum number of running tasks reached.\n"; return; }
     // find a ready-to-run but not actually running task to execute
     $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0";
     $task = $this->pages->get($selector);
