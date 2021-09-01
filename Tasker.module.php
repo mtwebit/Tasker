@@ -49,10 +49,10 @@ class Tasker extends WireData implements Module {
    */
   public function ___install() {
     // check / add fieldgroup
-    $fg = $this->fieldgroups->get('tasker-fieldgroup');
+    $fg = $this->fieldgroups->get('tasker_task');
     if (!@$fg->id) {
       $fg = new Fieldgroup();
-      $fg->name = 'tasker-fieldgroup';
+      $fg->name = 'tasker_task';
       $fg->add($this->fields->get('title'));
       $fg->add($this->fields->get('body'));
       $field->tags = 'Tasker';
@@ -111,7 +111,7 @@ class Tasker extends WireData implements Module {
       if ($t) {
         $this->templates->delete($t);
       }
-      $fg = $this->fieldgroups->get('tasker-fieldgroup');
+      $fg = $this->fieldgroups->get('tasker_task');
       if (@$fg->id) {
         $this->fieldgroups->delete($fg);
       }
