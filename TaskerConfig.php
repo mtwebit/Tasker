@@ -28,6 +28,10 @@ class TaskerConfig extends ModuleConfig {
   public function getInputfields() {
     $inputfields = parent::getInputfields();
 
+    if (!function_exists('pcntl_signal')) {
+      $this->warning('pcntl_signal() is missing on this system.');
+    }
+
 /********************  Module info  *********************************/
     $fieldset = $this->wire('modules')->get('InputfieldFieldset');
     $fieldset->label = __('About the module and usage tips');

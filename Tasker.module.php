@@ -698,12 +698,13 @@ class Tasker extends WireData implements Module {
       $task->task_state = self::taskWaiting; // the task will be stopped
       return true;
     };
-    pcntl_signal(SIGTERM, $itHandler);
-    pcntl_signal(SIGINT, $itHandler);
+    if (function_exists('pcntl_signal')) {
+      pcntl_signal(SIGTERM, $itHandler);
+      pcntl_signal(SIGINT, $itHandler);
+    }
 
-    // TODO check if pcntl_signal() is available
     // if we have a timeout value then setup an alarm clock
-    if ($params['timeout'] > 0) {
+    if ($params['timeout'] > 0 && function_exists('pcntl_signal')) {
       pcntl_signal(SIGALRM, function ($signo) use ($task) {
         $task->task_state = self::taskFailed; // the task will be stopped
         $this->message('Either the limit is too low (check Tasker config) or the task\'s code does not check the limit properly.');
@@ -930,7 +931,7 @@ class Tasker extends WireData implements Module {
    */
   public function checkEvents(Page $task, $taskData) {
     // check for Unix signals
-    pcntl_signal_dispatch();
+    if (function_exists('pcntl_signal_dispatch')) pcntl_signal_dispatch();
     // TODO check and handle other events 
   }
 
