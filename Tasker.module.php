@@ -55,7 +55,6 @@ class Tasker extends WireData implements Module {
       $fg->name = 'tasker_task';
       $fg->add($this->fields->get('title'));
       $fg->add($this->fields->get('body'));
-      $field->tags = 'Tasker';
       $fg->save();
     }
 
