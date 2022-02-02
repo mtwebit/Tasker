@@ -33,7 +33,7 @@ class Tasker extends WireData implements Module {
     'task_data' => array('type' => 'FieldtypeTextarea', 'label' => 'Task data'),
     'task_state' => array('type' => 'FieldtypeInteger', 'label' => 'Task state', 'min' => '0', 'max' => '10'),
     'task_running' => array('type' => 'FieldtypeInteger', 'label' => 'Task is running', 'min' => '0', 'max' => '1'),
-    'task_admin_running' => array('type' => 'FieldtypeInteger', 'label' => 'Task is running by TaskerAdmin', 'min' => '0', 'max' => '1'),
+    'task_admin_running' => array('type' => 'FieldtypeInteger', 'label' => 'Task is currently executed by TaskerAdmin', 'min' => '0', 'max' => '1'),
     'progress' => array('type' => 'FieldtypeInteger', 'label' => 'Progress [%]', 'min' => '0', 'max' => '100'),
     'signature' => array('type' => 'FieldtypeText', 'label' => 'Signature'),
     'log_messages' => array('type' => 'FieldtypeTextarea', 'label' => 'Log messages')
