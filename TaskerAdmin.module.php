@@ -196,8 +196,11 @@ class TaskerAdmin extends Process implements Module {
         }
         $ret['status'] = true;
         $ret['result'] = $tasker->activateTask($task);
-        // change the command to 'run' to activate the JS backend executor during tasklist rendering
-        $command = 'run';
+        if ($ret['result']) {
+          $task->setAndSave('task_admin_running', 1);
+          // change the command to 'run' to activate the JS backend executor during tasklist rendering
+          $command = 'run';
+        }
         break;
       case 'reset':   // reset progress and logs
         $ret['status'] = true;

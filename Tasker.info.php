@@ -14,7 +14,7 @@
 
 $info = array(
   'title' => 'Tasker module',
-  'version' => '1.0.0',
+  'version' => '1.1.0',
   'summary' => 'The module provides support for executing long-running tasks.',
   'href' => 'https://github.com/mtwebit/Tasker/',
   'singular' => true,

@@ -33,6 +33,7 @@ class Tasker extends WireData implements Module {
     'task_data' => array('type' => 'FieldtypeTextarea', 'label' => 'Task data'),
     'task_state' => array('type' => 'FieldtypeInteger', 'label' => 'Task state', 'min' => '0', 'max' => '10'),
     'task_running' => array('type' => 'FieldtypeInteger', 'label' => 'Task is running', 'min' => '0', 'max' => '1'),
+    'task_admin_running' => array('type' => 'FieldtypeInteger', 'label' => 'Task is running by TaskerAdmin', 'min' => '0', 'max' => '1'),
     'progress' => array('type' => 'FieldtypeInteger', 'label' => 'Progress [%]', 'min' => '0', 'max' => '100'),
     'signature' => array('type' => 'FieldtypeText', 'label' => 'Signature'),
     'log_messages' => array('type' => 'FieldtypeTextarea', 'label' => 'Log messages')
@@ -41,6 +42,18 @@ class Tasker extends WireData implements Module {
 /***********************************************************************
  * MODULE SETUP
  **********************************************************************/
+
+
+ /**
+   * Called only when this module is upgraded
+   * 
+   * Only displays a warning message atm.
+   */
+  public function ___upgrade($fromVer, $toVer) {
+    $this->warning("The task template may have been changed. Please, ensure, that your templates and fields are complete. The easiest way to ensure this is to reinstall the module.");
+    // TODO check fieldgroups and fields and fix the errors
+  }
+
 
  /**
    * Called only when this module is installed
@@ -207,6 +220,7 @@ class Tasker extends WireData implements Module {
     $p->progress = 0;
     $p->task_state = self::taskWaiting;
     $p->task_running = 0;
+    $p->task_admin_running = 0;
 
     // suspend this task and warn the user if the same task already exists
     $op = $page->child("template={$this->taskTemplate},signature={$p->signature},include=hidden");
@@ -230,7 +244,7 @@ class Tasker extends WireData implements Module {
     if (is_integer($selector)) $selector = 'task_state='.$selector;
     $selector .= ($selector == '' ? 'template='.$this->taskTemplate : ',template='.$this->taskTemplate);
     $selector .= ',include=hidden'; // task pages are hidden by default
-    // $this->message($selector, Notice::debug);
+    $this->message($selector);
     return $this->pages->find($selector);
   }
 
@@ -532,10 +546,10 @@ class Tasker extends WireData implements Module {
    * @param $e HookEvent
    */
   public function executeByLazyCron(HookEvent $e) {
-    if ($this->pages->count("template={$this->taskTemplate},task_running=1,include=hidden")>2) return;
+    if ($this->pages->count("template={$this->taskTemplate},task_running|task_admin_running=1,include=hidden")>2) return;
 
     // find a ready-to-run but not actually running task to execute
-    $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,include=hidden";
+    $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running|task_admin_running=0,include=hidden";
     $task = $this->pages->findOne($selector);
     if ($task instanceof NullPage) return;
 
@@ -571,9 +585,9 @@ class Tasker extends WireData implements Module {
     // silently exit if cron is disabled on the module's setting page
     if (!$this->enableCron) return;
     // Limit the number of running tasks to 1 to avoid MySQL deadlocks
-    if ($this->pages->count("task_running=1,include=hidden")>0) { return; }
+    if ($this->pages->count("task_running|task_admin_running=1,include=hidden")>0) { return; }
     // find a ready-to-run but not actually running task to execute
-    $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,include=hidden";
+    $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,task_admin_running=1,include=hidden";
     $task = $this->pages->findOne($selector);
     if ($task instanceof NullPage) return;
 
@@ -791,6 +805,7 @@ class Tasker extends WireData implements Module {
       if ($taskData['task_done']) {
         $this->message("Task '{$task->title}' finished.", Notice::debug);
         $task->setAndSave('task_state', self::taskFinished);
+        $task->setAndSave('task_admin_running', 0);
         if (isset($taskData['next_task'])) {
           // activate the next tasks that are waiting for this one
           $this->activateTaskSet($taskData['next_task'], false /* don't activate if it is already finished */);
