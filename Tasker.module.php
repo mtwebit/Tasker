@@ -587,7 +587,7 @@ class Tasker extends WireData implements Module {
     // Limit the number of running tasks to 1 to avoid MySQL deadlocks
     if ($this->pages->count("task_running|task_admin_running=1,include=hidden")>0) { return; }
     // find a ready-to-run but not actually running task to execute
-    $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,task_admin_running=1,include=hidden";
+    $selector = "template={$this->taskTemplate},task_state=".self::taskActive.",task_running=0,task_admin_running=0,include=hidden";
     $task = $this->pages->findOne($selector);
     if ($task instanceof NullPage) return;
 

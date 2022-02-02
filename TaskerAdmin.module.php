@@ -174,6 +174,7 @@ class TaskerAdmin extends Process implements Module {
         break;
       case 'restart': // reset progress then activate the task
         $tasker->resetProgress($task);
+        $task->setAndSave('task_admin_running', 0);
       case 'activate':   // activate the task (will be run by Cron or LazyCron)
         $ret['status'] = true;
         $ret['result'] = $tasker->activateTask($task);
@@ -205,14 +206,17 @@ class TaskerAdmin extends Process implements Module {
       case 'reset':   // reset progress and logs
         $ret['status'] = true;
         $tasker->stopTask($task, false, true);
+        $task->setAndSave('task_admin_running', 0);
         break;
       case 'suspend': // stop the task but keep progress
         $ret['status'] = true;
         $tasker->stopTask($task);
+        $task->setAndSave('task_admin_running', 0);
         break;
       case 'kill':    // stop the running task
         $ret['status'] = true;
         $tasker->stopTask($task, true, true);
+        $task->setAndSave('task_admin_running', 0);
         break;
       case 'trash':   // delete the task
         $ret['status'] = true;
