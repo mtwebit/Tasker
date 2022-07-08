@@ -727,7 +727,7 @@ class Tasker extends WireData implements Module {
     }
 
     // set a custom PHP error handler for WARNINGS and ERRORS
-    set_error_handler(function($errno, $errstr, $errfile, $errline, array $errcontext) use ($task) {
+    set_error_handler(function($errno, $errstr, $errfile, $errline, array $errcontext = array()) use ($task) {
       $this->message("ERROR: {$errstr}[{$errno}] in {$errfile} at line {$errline}.");
       return true; // bypass PHP error handling for warnings
     });
